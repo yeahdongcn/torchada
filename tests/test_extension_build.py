@@ -3,6 +3,10 @@ Tests for building CUDA extensions with torchada.
 
 These tests verify that CUDAExtension and BuildExtension work correctly
 on MUSA platforms, including source code porting.
+
+The key point is that after importing torchada, the standard torch imports
+should work transparently:
+    from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 """
 
 import pytest
@@ -11,6 +15,9 @@ import sys
 import tempfile
 import shutil
 import subprocess
+
+# Import torchada first to apply patches
+import torchada  # noqa: F401
 
 
 # Get the path to the test CUDA source file
@@ -27,19 +34,19 @@ class TestExtensionBuildSetup:
 
     def test_can_create_setup_py(self):
         """Test that we can create a setup.py for the extension."""
-        import torchada
-        from torchada.utils.cpp_extension import CUDAExtension, BuildExtension
+        # Use standard torch imports - torchada patches make them work on MUSA
+        from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 
         # Create a temporary directory for the test
         with tempfile.TemporaryDirectory() as tmpdir:
             # Copy the source file
             shutil.copy(VECTOR_ADD_CU, tmpdir)
 
-            # Create setup.py content
+            # Create setup.py content - uses standard torch imports
             setup_content = f'''
-import torchada
+import torchada  # noqa: F401 - Apply MUSA patches
 from setuptools import setup
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 
 setup(
     name="test_vector_add",
@@ -76,7 +83,6 @@ class TestExtensionBuild:
 
     def test_build_vector_add_extension(self):
         """Test building the vector_add extension."""
-        import torchada
         import torch
 
         if not torch.cuda.is_available():
@@ -86,11 +92,11 @@ class TestExtensionBuild:
             # Copy the source file
             shutil.copy(VECTOR_ADD_CU, tmpdir)
 
-            # Create setup.py
+            # Create setup.py using standard torch imports
             setup_content = '''
-import torchada
+import torchada  # noqa: F401 - Apply MUSA patches
 from setuptools import setup
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 
 setup(
     name="test_vector_add",
@@ -128,7 +134,6 @@ setup(
 
     def test_run_vector_add_extension(self):
         """Test running the vector_add extension after building."""
-        import torchada
         import torch
 
         if not torch.cuda.is_available():
@@ -138,11 +143,11 @@ setup(
             # Copy the source file
             shutil.copy(VECTOR_ADD_CU, tmpdir)
 
-            # Create setup.py
+            # Create setup.py using standard torch imports
             setup_content = '''
-import torchada
+import torchada  # noqa: F401 - Apply MUSA patches
 from setuptools import setup
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 
 setup(
     name="test_vector_add",

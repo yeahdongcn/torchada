@@ -304,6 +304,33 @@ def _patch_autocast():
     torch.amp.autocast = PatchedAutocast
 
 
+def _patch_cpp_extension():
+    """
+    Patch torch.utils.cpp_extension to use torchada's MUSA-compatible versions.
+
+    This allows developers to use standard imports like:
+        from torch.utils.cpp_extension import CUDAExtension, BuildExtension
+
+    And have them work transparently on MUSA platform.
+    """
+    try:
+        # Import our cpp_extension module which has the MUSA-compatible implementations
+        from .utils import cpp_extension as torchada_cpp_ext
+    except ImportError:
+        return
+
+    # Get the original torch.utils.cpp_extension module
+    import torch.utils.cpp_extension as torch_cpp_ext
+
+    # Patch the key classes and functions
+    torch_cpp_ext.CUDAExtension = torchada_cpp_ext.CUDAExtension
+    torch_cpp_ext.BuildExtension = torchada_cpp_ext.BuildExtension
+    torch_cpp_ext.CUDA_HOME = torchada_cpp_ext.CUDA_HOME
+
+    # Also update sys.modules entry
+    sys.modules['torch.utils.cpp_extension'] = torch_cpp_ext
+
+
 def apply_patches():
     """
     Apply all necessary patches for CUDA to MUSA translation.
@@ -320,6 +347,7 @@ def apply_patches():
     - torch.cuda.CUDAGraph -> torch.musa.MUSAGraph
     - torch.cuda.nccl -> torch.musa.mccl
     - torch.amp.autocast(device_type='cuda') -> 'musa'
+    - torch.utils.cpp_extension (CUDAExtension, BuildExtension) -> MUSA versions
 
     This function should be called once at import time.
     """
@@ -350,6 +378,9 @@ def apply_patches():
 
     # Patch torch.amp.autocast for device_type translation
     _patch_autocast()
+
+    # Patch torch.utils.cpp_extension for MUSA compatibility
+    _patch_cpp_extension()
 
     # Patch torch.Tensor.to()
     if hasattr(torch.Tensor, 'to'):
