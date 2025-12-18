@@ -1,7 +1,7 @@
 # Migrating Existing CUDA Projects to torchada
 
 This guide shows how to migrate an existing PyTorch CUDA project to use torchada,
-making it compatible with both NVIDIA (CUDA) and Moore Threads (MUSA) GPUs.
+making it compatible with multiple GPU platforms.
 
 ## Quick Migration
 
@@ -11,24 +11,23 @@ making it compatible with both NVIDIA (CUDA) and Moore Threads (MUSA) GPUs.
 pip install torchada
 ```
 
-### Step 2: Update Imports
+### Step 2: Add One Import
 
-**Before (CUDA only):**
+**Before:**
 ```python
 import torch
-import torch.cuda as cuda
 from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 ```
 
-**After (CUDA + MUSA):**
+**After:**
 ```python
-import torchada  # Must import first to apply patches
+import torchada  # Just add this one line!
 import torch
-from torchada import cuda
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 ```
 
-That's it! Your code should now work on both platforms.
+That's it! **No other code changes needed.** Your existing `torch.cuda.*` code
+and `torch.utils.cpp_extension` imports work on all supported platforms.
 
 ## Detailed Migration Examples
 
@@ -46,7 +45,7 @@ if torch.cuda.is_available():
 
 **After:**
 ```python
-import torchada  # Add this line at the top
+import torchada  # Add this line at the top - that's it!
 import torch
 
 # Rest of the code stays exactly the same!
@@ -56,17 +55,19 @@ if torch.cuda.is_available():
     model = MyModel().cuda()
 ```
 
-### Example 2: Using torchada.cuda Module
+### Example 2: torch.cuda APIs
 
-If you prefer explicit imports:
+All standard `torch.cuda` APIs work after importing torchada:
 
 ```python
-from torchada import cuda
+import torchada
+import torch
 
-if cuda.is_available():
-    cuda.set_device(0)
-    print(f"Using: {cuda.get_device_name()}")
-    print(f"Memory: {cuda.memory_allocated() / 1024**2:.2f} MB")
+if torch.cuda.is_available():
+    torch.cuda.set_device(0)
+    print(f"Using: {torch.cuda.get_device_name()}")
+    print(f"Memory: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+    torch.cuda.synchronize()
 ```
 
 ### Example 3: Mixed Precision Training
@@ -78,7 +79,17 @@ from torch.cuda.amp import autocast, GradScaler
 
 **After:**
 ```python
-from torchada.cuda.amp import autocast, GradScaler
+import torchada  # Add this line
+from torch.cuda.amp import autocast, GradScaler  # Same import works!
+```
+
+Or use the newer API:
+```python
+import torchada
+import torch
+
+with torch.amp.autocast(device_type='cuda'):
+    output = model(input)
 ```
 
 ### Example 4: Building Extensions (setup.py)
@@ -102,10 +113,11 @@ setup(
 
 **After:**
 ```python
+import torchada  # Add this line at the top
 from setuptools import setup
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 
-# Exactly the same setup code works on both CUDA and MUSA!
+# Exactly the same setup code works on all supported platforms!
 setup(
     name="my_extension",
     ext_modules=[
@@ -118,60 +130,86 @@ setup(
 )
 ```
 
+### Example 5: Distributed Training
+
+**Before:**
+```python
+import torch.distributed as dist
+dist.init_process_group(backend='nccl')
+```
+
+**After:**
+```python
+import torchada  # Add this line
+import torch.distributed as dist
+dist.init_process_group(backend='nccl')  # Works on all supported platforms
+```
+
+### Example 6: CUDA Graphs
+
+**Before:**
+```python
+g = torch.cuda.CUDAGraph()
+with torch.cuda.graph(g):
+    y = model(x)
+```
+
+**After:**
+```python
+import torchada  # Add this line
+import torch
+
+g = torch.cuda.CUDAGraph()
+with torch.cuda.graph(g):
+    y = model(x)
+```
+
 ## What Happens Under the Hood
 
-When you import torchada on a MUSA platform:
+When you import torchada, it:
 
-1. **Platform Detection**: torchada detects Moore Threads GPU
-2. **Automatic Patching**: `tensor.cuda()` and `.to("cuda")` are patched to use MUSA
-3. **Symbol Mapping**: CUDA API calls in extensions are mapped to MUSA equivalents
-4. **Extension Building**: `.cu` files are compiled with MUSA compiler (mcc)
+1. **Detects the platform**: Identifies the available GPU hardware
+2. **Patches PyTorch modules**: Makes `torch.cuda` and `torch.utils.cpp_extension` work transparently
+3. **Translates device strings**: `"cuda"` device strings work on any supported platform
+4. **Maps backends**: `"nccl"` backend works on all supported platforms
+5. **Converts symbols**: CUDA API calls in extensions are mapped to platform equivalents
+6. **Handles compilation**: `.cu` files are compiled with the appropriate compiler
 
 ## Environment Variables
 
 You can force a specific platform:
 
 ```bash
-# Force MUSA platform
-export TORCHADA_PLATFORM=musa
-
-# Force CUDA platform  
-export TORCHADA_PLATFORM=cuda
-
-# Force CPU only
-export TORCHADA_PLATFORM=cpu
+export TORCHADA_PLATFORM=cuda  # or cpu
 ```
 
 ## Common Patterns in Popular Projects
 
-### vLLM-style imports
+### vLLM-style setup.py
 
 ```python
-# Original vLLM
-from torch.utils.cpp_extension import CUDAExtension, BuildExtension
+# Just add this at the top of setup.py
+import torchada
 
-# With torchada
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension
+# Keep all your existing imports unchanged
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 ```
 
-### SGLang-style imports
+### SGLang-style code
 
 ```python
-# Original SGLang
-import torch.cuda
-
-# With torchada
+# Just add this at the top
 import torchada
-import torch.cuda  # Still works thanks to patching!
 
-# Or explicitly
-from torchada import cuda
+# All existing torch.cuda code works unchanged
+import torch.cuda
+torch.cuda.synchronize()
 ```
 
 ## Tips for Migration
 
 1. **Import torchada first**: Always import torchada before torch to ensure patches are applied
-2. **Keep "cuda" strings**: You don't need to change `"cuda"` to `"musa"` - torchada handles this
-3. **Test on both platforms**: Verify your code works on both CUDA and MUSA if possible
-4. **Check CUDA_HOME**: Use `from torchada.utils.cpp_extension import CUDA_HOME` for correct path
+2. **Keep standard imports**: Use `from torch.utils.cpp_extension import ...` (not from torchada)
+3. **Keep "cuda" strings**: No need to change device strings - torchada handles platform differences
+4. **Test your code**: Verify your code works correctly after adding the torchada import
 

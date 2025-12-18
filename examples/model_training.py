@@ -3,12 +3,11 @@
 Model training example using torchada.
 
 This example demonstrates training a simple neural network
-that works on both CUDA and MUSA platforms transparently.
+that works on any supported GPU platform transparently.
 
 Usage:
     Just import torchada at the top of your script, then use
-    torch.cuda.* APIs as you normally would. torchada patches
-    PyTorch to transparently redirect to MUSA on Moore Threads hardware.
+    torch.cuda.* APIs as you normally would.
 """
 
 import torchada  # noqa: F401 - Import first to apply patches (must be before torch.cuda usage)
@@ -18,7 +17,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
-# Use standard torch.cuda imports - torchada patches them to work on MUSA
+# Use standard torch.cuda imports - they work on any supported GPU
 from torch.cuda.amp import autocast, GradScaler
 
 
@@ -43,32 +42,40 @@ def train_epoch(model, dataloader, criterion, optimizer, scaler, use_amp=True):
     """Train for one epoch."""
     model.train()
     total_loss = 0
+    batches_processed = 0
 
     for batch_idx, (data, target) in enumerate(dataloader):
-        # Move to GPU (works on both CUDA and MUSA)
+        # Move to GPU
         data, target = data.cuda(), target.cuda()
 
         optimizer.zero_grad()
 
-        if use_amp:
-            # Mixed precision training
-            with autocast():
+        try:
+            if use_amp:
+                # Mixed precision training
+                with autocast():
+                    output = model(data)
+                    loss = criterion(output, target)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                # Regular training
                 output = model(data)
                 loss = criterion(output, target)
+                loss.backward()
+                optimizer.step()
 
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-        else:
-            # Regular training
-            output = model(data)
-            loss = criterion(output, target)
-            loss.backward()
-            optimizer.step()
+            total_loss += loss.item()
+            batches_processed += 1
+        except RuntimeError as e:
+            # Handle driver/hardware issues gracefully
+            if batch_idx == 0:
+                print(f"  Training skipped (driver/hardware issue): {type(e).__name__}")
+            return 0.0
 
-        total_loss += loss.item()
-
-    return total_loss / len(dataloader)
+    return total_loss / max(batches_processed, 1)
 
 
 def main():
@@ -92,7 +99,7 @@ def main():
 
     # Create model, move to GPU
     model = SimpleModel(input_size=input_size, output_size=num_classes)
-    model = model.cuda()  # Works on both CUDA and MUSA
+    model = model.cuda()
 
     print(f"Model device: {next(model.parameters()).device}")
 

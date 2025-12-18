@@ -5,21 +5,20 @@ torchada provides a unified interface that works transparently on both
 NVIDIA GPUs (CUDA) and Moore Threads GPUs (MUSA).
 
 Usage:
-    Just import torchada at the top of your script, then use torch.cuda.*
-    APIs as you normally would. torchada patches PyTorch to transparently
-    redirect to MUSA on Moore Threads hardware.
+    Just import torchada at the top of your script, then use standard
+    torch.cuda.* and torch.utils.cpp_extension APIs as you normally would.
+    torchada patches PyTorch to transparently redirect to MUSA on
+    Moore Threads hardware.
 
     # Add this at the top of your script:
     import torchada  # noqa: F401
 
-    # Then use torch.cuda as normal - it works on MUSA too!
+    # Then use standard torch APIs - they work on MUSA too!
     import torch
     torch.cuda.is_available()
     x = torch.randn(3, 3).cuda()
     from torch.cuda.amp import autocast, GradScaler
-
-    # For building C++ extensions, use torchada's versions:
-    from torchada.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
+    from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 """
 
 __version__ = "0.1.0"

@@ -2,8 +2,7 @@
 """
 Example setup.py for building a C++/CUDA extension with torchada.
 
-This example shows how to build CUDA extensions that work on both
-CUDA and MUSA platforms using standard torch imports.
+This example shows how to build CUDA extensions using standard torch imports.
 
 Key point: Just import torchada first, then use standard torch imports.
 No code changes needed!
@@ -18,24 +17,20 @@ from setuptools import setup, find_packages
 # Import torchada first to apply patches
 import torchada  # noqa: F401
 
-# Now use standard torch imports - they work on both CUDA and MUSA!
+# Now use standard torch imports - they work on any supported GPU!
 from torch.utils.cpp_extension import (
     CUDAExtension,
     CppExtension,
     BuildExtension,
     CUDA_HOME,
 )
-from torchada import detect_platform, Platform
 
 
 def get_extensions():
     """Build the list of extensions."""
     extensions = []
 
-    # Get current platform
-    platform = detect_platform()
-    print(f"Building for platform: {platform.value}")
-    print(f"CUDA/MUSA home: {CUDA_HOME}")
+    print(f"CUDA_HOME: {CUDA_HOME}")
 
     # Define source files
     # In a real project, these would be actual .cpp and .cu files
@@ -50,31 +45,13 @@ def get_extensions():
         print("This is just an example showing the setup structure.")
         return extensions
 
-    # Common compile flags
-    cxx_flags = ["-O3", "-std=c++17"]
-
-    # Platform-specific GPU flags
-    if platform == Platform.MUSA:
-        # MUSA compiler flags
-        gpu_flags = ["-O3", "-std=c++17"]
-        gpu_key = "mcc"  # MUSA compiler
-    else:
-        # CUDA compiler flags
-        gpu_flags = [
-            "-O3",
-            "-std=c++17",
-            "--expt-relaxed-constexpr",
-            "--expt-extended-lambda",
-        ]
-        gpu_key = "nvcc"
-
-    # Create the extension
+    # Create the extension - torchada handles platform-specific details
     ext = CUDAExtension(
         name="my_extension",
         sources=sources,
         extra_compile_args={
-            "cxx": cxx_flags,
-            gpu_key: gpu_flags,
+            "cxx": ["-O3", "-std=c++17"],
+            "nvcc": ["-O3", "-std=c++17"],  # torchada maps to correct compiler
         },
         include_dirs=[
             # Add your include directories here
@@ -109,7 +86,7 @@ if __name__ == "__main__":
         print("  ├── setup.py              # Use this as a template")
         print("  ├── src/")
         print("  │   ├── my_extension.cpp  # C++ bindings")
-        print("  │   └── my_kernel.cu      # CUDA/MUSA kernels")
+        print("  │   └── my_kernel.cu      # CUDA kernels")
         print("  └── my_extension/")
         print("      └── __init__.py       # Python package")
 

@@ -4,11 +4,15 @@ torchada.cuda - CUDA-compatible API that works on both CUDA and MUSA platforms.
 This module provides the same interface as torch.cuda but automatically
 routes to torch.musa on Moore Threads hardware.
 
-Usage:
-    from torchada import cuda
-    
-    if cuda.is_available():
-        cuda.set_device(0)
+Note: After importing torchada, you can use standard torch.cuda APIs directly.
+This module is provided for internal use and backwards compatibility.
+
+Usage (preferred):
+    import torchada  # Apply patches
+    import torch
+
+    if torch.cuda.is_available():
+        torch.cuda.set_device(0)
         tensor = tensor.cuda()
 """
 
@@ -21,7 +25,7 @@ from .._platform import detect_platform, Platform, is_musa_platform, is_cuda_pla
 def _get_backend():
     """Get the appropriate backend module (torch.cuda or torch.musa)."""
     platform = detect_platform()
-    
+
     if platform == Platform.MUSA:
         import torch_musa
         import torch
@@ -135,13 +139,13 @@ def synchronize(device: Optional[Union[int, str]] = None) -> None:
 def _setup_stream_event_classes():
     """Set up Stream and Event classes from the backend."""
     backend = _get_backend()
-    
+
     # These will be the actual classes from the backend
     global Stream, Event, current_stream, default_stream, stream
-    
+
     Stream = backend.Stream if hasattr(backend, 'Stream') else None
     Event = backend.Event if hasattr(backend, 'Event') else None
-    
+
     if hasattr(backend, 'current_stream'):
         current_stream = backend.current_stream
     if hasattr(backend, 'default_stream'):

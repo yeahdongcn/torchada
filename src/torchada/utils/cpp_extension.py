@@ -4,8 +4,12 @@ torchada.utils.cpp_extension - C++/CUDA extension utilities.
 This module provides CUDAExtension, BuildExtension, and related utilities
 that work on both CUDA and MUSA platforms.
 
-Usage:
-    from torchada.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
+Note: After importing torchada, you can use standard torch.utils.cpp_extension
+imports - they are automatically patched to use these implementations on MUSA.
+
+Usage (preferred):
+    import torchada  # Apply patches first
+    from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 
     ext_modules = [
         CUDAExtension(

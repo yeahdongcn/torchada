@@ -2,14 +2,14 @@
 
 **Adapter package for torch_musa to act exactly like PyTorch CUDA**
 
-torchada provides a unified interface that works transparently on both NVIDIA GPUs (CUDA) and Moore Threads GPUs (MUSA). Write your code once using CUDA APIs, and it will run on MUSA hardware without any changes.
+torchada provides a unified interface that works transparently on both NVIDIA GPUs (CUDA) and Moore Threads GPUs (MUSA). Write your code once using standard PyTorch CUDA APIs, and it will run on MUSA hardware without any changes.
 
 ## Features
 
+- **Zero Code Changes**: Just `import torchada` once, then use standard `torch.cuda.*` APIs
 - **Automatic Platform Detection**: Detects whether you're running on CUDA or MUSA
-- **Drop-in Replacement**: Use the same CUDA APIs on MUSA hardware
 - **Transparent Device Mapping**: `tensor.cuda()` and `tensor.to("cuda")` work on MUSA
-- **Extension Building**: `CUDAExtension` and `BuildExtension` work on both platforms
+- **Extension Building**: Standard `torch.utils.cpp_extension` works on MUSA after importing torchada
 - **Source Code Porting**: Automatic CUDA → MUSA symbol mapping for C++/CUDA extensions
 
 ## Installation
@@ -28,37 +28,28 @@ pip install -e .
 ### Basic Usage
 
 ```python
-import torchada  # Automatically patches PyTorch for MUSA compatibility
+import torchada  # Import once to apply patches - that's it!
 import torch
 
-# These work on both CUDA and MUSA platforms:
+# Use standard torch.cuda APIs - they work on both CUDA and MUSA:
 if torch.cuda.is_available():
     device = torch.device("cuda")
     tensor = torch.randn(10, 10).cuda()
     model = MyModel().cuda()
-```
 
-### Using torchada.cuda
-
-```python
-from torchada import cuda
-
-# Works on both CUDA and MUSA
-if cuda.is_available():
-    print(f"Device count: {cuda.device_count()}")
-    print(f"Current device: {cuda.current_device()}")
-    print(f"Device name: {cuda.get_device_name()}")
-
-    cuda.set_device(0)
-    cuda.synchronize()
+    # All torch.cuda.* APIs work transparently
+    print(f"Device count: {torch.cuda.device_count()}")
+    print(f"Device name: {torch.cuda.get_device_name()}")
+    torch.cuda.synchronize()
 ```
 
 ### Building C++ Extensions
 
 ```python
-# setup.py
+# setup.py - Use standard torch imports!
+import torchada  # Import first to apply patches
 from setuptools import setup
-from torchada.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
+from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 
 print(f"Building with CUDA/MUSA home: {CUDA_HOME}")
 
@@ -86,7 +77,8 @@ setup(
 ### JIT Compilation
 
 ```python
-from torchada.utils.cpp_extension import load
+import torchada  # Import first to apply patches
+from torch.utils.cpp_extension import load
 
 # Load extension at runtime (works on both CUDA and MUSA)
 my_extension = load(
@@ -99,16 +91,17 @@ my_extension = load(
 ### Mixed Precision Training
 
 ```python
-from torchada.cuda.amp import autocast, GradScaler
+import torchada  # Import first to apply patches
+import torch
 
 model = MyModel().cuda()
 optimizer = torch.optim.Adam(model.parameters())
-scaler = GradScaler()
+scaler = torch.cuda.amp.GradScaler()
 
 for data, target in dataloader:
     data, target = data.cuda(), target.cuda()
 
-    with autocast():
+    with torch.cuda.amp.autocast():
         output = model(data)
         loss = criterion(output, target)
 
@@ -118,15 +111,34 @@ for data, target in dataloader:
     optimizer.zero_grad()
 ```
 
-## Platform Detection
-
-torchada automatically detects the platform. You can also force a specific platform:
+### Distributed Training
 
 ```python
-# Force specific platform via environment variable
-export TORCHADA_PLATFORM=musa  # or cuda, cpu
+import torchada  # Import first to apply patches
+import torch.distributed as dist
 
-# Or check programmatically
+# Use 'nccl' backend as usual - torchada maps it to 'mccl' on MUSA
+dist.init_process_group(backend='nccl')
+```
+
+### CUDA Graphs
+
+```python
+import torchada  # Import first to apply patches
+import torch
+
+# Use standard torch.cuda.CUDAGraph - works on MUSA too
+g = torch.cuda.CUDAGraph()
+with torch.cuda.graph(g):
+    y = model(x)
+```
+
+## Platform Detection
+
+torchada automatically detects the platform:
+
+```python
+import torchada
 from torchada import detect_platform, Platform
 
 platform = detect_platform()
@@ -134,7 +146,23 @@ if platform == Platform.MUSA:
     print("Running on Moore Threads GPU")
 elif platform == Platform.CUDA:
     print("Running on NVIDIA GPU")
+
+# Or use convenience functions
+if torchada.is_musa_platform():
+    print("MUSA platform detected")
 ```
+
+## What Gets Patched
+
+After `import torchada`, the following standard PyTorch APIs work on MUSA:
+
+| Standard Import | Works On MUSA |
+|----------------|---------------|
+| `torch.cuda.*` | ✅ All APIs |
+| `torch.cuda.amp.*` | ✅ autocast, GradScaler |
+| `torch.cuda.CUDAGraph` | ✅ Maps to MUSAGraph |
+| `torch.distributed` (backend='nccl') | ✅ Uses MCCL |
+| `torch.utils.cpp_extension.*` | ✅ CUDAExtension, BuildExtension |
 
 ## API Reference
 
@@ -147,14 +175,15 @@ elif platform == Platform.CUDA:
 | `is_cuda_platform()` | Check if running on CUDA |
 | `get_device_name()` | Get device name string ("cuda", "musa", or "cpu") |
 
-### torchada.cuda
+### torch.cuda (after importing torchada)
 
-Same API as `torch.cuda`, including:
+All standard `torch.cuda` APIs work, including:
 - `is_available()`, `device_count()`, `current_device()`, `set_device()`
 - `memory_allocated()`, `memory_reserved()`, `empty_cache()`
-- `synchronize()`, `Stream`, `Event`
+- `synchronize()`, `Stream`, `Event`, `CUDAGraph`
+- `amp.autocast()`, `amp.GradScaler()`
 
-### torchada.utils.cpp_extension
+### torch.utils.cpp_extension (after importing torchada)
 
 | Symbol | Description |
 |--------|-------------|
@@ -163,8 +192,6 @@ Same API as `torch.cuda`, including:
 | `BuildExtension` | Build command for extensions |
 | `CUDA_HOME` | Path to CUDA/MUSA installation |
 | `load()` | JIT compile and load extension |
-| `include_paths()` | Get include paths |
-| `library_paths()` | Get library paths |
 
 ## Symbol Mapping
 
