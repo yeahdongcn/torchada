@@ -484,3 +484,91 @@ class TestDeviceFunctions:
 
         assert hasattr(torch.cuda, 'is_initialized')
 
+
+class TestTorchVersionCuda:
+    """Test torch.version.cuda patching."""
+
+    def test_torch_version_cuda_is_set(self):
+        """Test torch.version.cuda is set on MUSA platform."""
+        import torchada
+        import torch
+
+        if torchada.is_musa_platform():
+            assert torch.version.cuda is not None
+            assert isinstance(torch.version.cuda, str)
+
+    def test_torch_version_cuda_matches_musa(self):
+        """Test torch.version.cuda matches torch.version.musa on MUSA platform."""
+        import torchada
+        import torch
+
+        if torchada.is_musa_platform():
+            assert torch.version.cuda == str(torch.version.musa)
+
+
+class TestTensorIsCuda:
+    """Test tensor.is_cuda patching."""
+
+    def test_cpu_tensor_is_cuda_false(self):
+        """Test CPU tensor.is_cuda returns False."""
+        import torchada
+        import torch
+
+        cpu_tensor = torch.empty(10, 10)
+        assert cpu_tensor.is_cuda is False
+
+    def test_musa_tensor_is_cuda_true(self):
+        """Test MUSA tensor.is_cuda returns True on MUSA platform."""
+        import torchada
+        import torch
+
+        if torchada.is_musa_platform() and torch.cuda.is_available():
+            try:
+                musa_tensor = torch.empty(10, 10, device='cuda:0')
+                assert musa_tensor.is_cuda is True
+                assert musa_tensor.is_musa is True
+            except RuntimeError as e:
+                if "MUSA" in str(e) or "invalid device function" in str(e):
+                    pytest.skip(f"MUSA driver issue: {e}")
+                raise
+
+
+class TestNvtxStub:
+    """Test torch.cuda.nvtx stub module."""
+
+    def test_nvtx_module_available(self):
+        """Test torch.cuda.nvtx is available."""
+        import torchada
+        import torch
+
+        assert hasattr(torch.cuda, 'nvtx')
+
+    def test_nvtx_mark(self):
+        """Test torch.cuda.nvtx.mark is available and callable."""
+        import torchada
+        import torch.cuda.nvtx as nvtx
+
+        assert hasattr(nvtx, 'mark')
+        # Should not raise
+        nvtx.mark("test")
+
+    def test_nvtx_range_push_pop(self):
+        """Test torch.cuda.nvtx.range_push and range_pop are available."""
+        import torchada
+        import torch.cuda.nvtx as nvtx
+
+        assert hasattr(nvtx, 'range_push')
+        assert hasattr(nvtx, 'range_pop')
+        # Should not raise
+        nvtx.range_push("test")
+        nvtx.range_pop()
+
+    def test_nvtx_range_context_manager(self):
+        """Test torch.cuda.nvtx.range context manager works."""
+        import torchada
+        import torch.cuda.nvtx as nvtx
+
+        assert hasattr(nvtx, 'range')
+        # Should not raise
+        with nvtx.range("test"):
+            pass

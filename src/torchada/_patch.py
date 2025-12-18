@@ -122,15 +122,120 @@ def _wrap_module_cuda(original_cuda: Callable) -> Callable:
     return wrapped_cuda
 
 
-def _wrap_torch_device(original_device: type) -> type:
-    """Wrap torch.device constructor to translate cuda to musa."""
-    class WrappedDevice(original_device):
-        def __new__(cls, device, index=None):
-            if isinstance(device, str):
-                device = _translate_device(device)
-            return super().__new__(cls, device, index)
+_original_torch_device = None
 
-    return WrappedDevice
+
+class _DeviceFactory:
+    """
+    A callable class that wraps torch.device to translate 'cuda' to 'musa'.
+
+    This class mimics torch.device behavior while translating device strings.
+    It maintains isinstance() compatibility by returning actual torch.device objects.
+    """
+
+    def __init__(self, original_device_class):
+        self._original = original_device_class
+        # Copy class attributes for compatibility
+        self.__doc__ = original_device_class.__doc__
+        self.__name__ = 'device'
+        self.__qualname__ = 'device'
+        self.__module__ = 'torch'
+
+    def __call__(self, device=None, index=None):
+        # Handle the case where device is already a torch.device
+        if isinstance(device, self._original):
+            if device.type == "cuda":
+                device = "musa"
+                index = device.index if index is None else index
+            else:
+                return device
+
+        # Handle string device
+        if isinstance(device, str):
+            device = _translate_device(device)
+
+        # Create the actual device
+        if index is not None:
+            return self._original(device, index)
+        elif device is not None:
+            return self._original(device)
+        else:
+            return self._original()
+
+    def __instancecheck__(cls, instance):
+        """Make isinstance(x, torch.device) work correctly."""
+        return isinstance(instance, cls._original)
+
+    # Make this class work with isinstance() by implementing __class__
+    @property
+    def __class__(self):
+        return type(self._original)
+
+
+class _DeviceFactoryMeta(type):
+    """Metaclass to make isinstance(x, torch.device) work with our factory."""
+
+    def __instancecheck__(cls, instance):
+        if _original_torch_device is not None:
+            return isinstance(instance, _original_torch_device)
+        return False
+
+    def __subclasscheck__(cls, subclass):
+        if _original_torch_device is not None:
+            return issubclass(subclass, _original_torch_device)
+        return False
+
+
+class DeviceFactoryWrapper(metaclass=_DeviceFactoryMeta):
+    """
+    A wrapper class that acts as torch.device but translates cuda to musa.
+
+    Uses a metaclass to properly handle isinstance() checks.
+    """
+    _original = None
+
+    def __new__(cls, device=None, index=None):
+        original = cls._original
+        if original is None:
+            raise RuntimeError("DeviceFactoryWrapper not initialized")
+
+        # Handle the case where device is already a torch.device
+        if isinstance(device, original):
+            if device.type == "cuda":
+                device = "musa"
+                index = device.index if index is None else index
+            else:
+                return device
+
+        # Handle string device
+        if isinstance(device, str):
+            device = _translate_device(device)
+
+        # Create the actual device
+        if index is not None:
+            return original(device, index)
+        elif device is not None:
+            return original(device)
+        else:
+            return original()
+
+
+def _patch_torch_device():
+    """
+    Patch torch.device to translate 'cuda' to 'musa' on MUSA platform.
+
+    This ensures that torch.device("cuda:0") creates a musa device when on MUSA.
+    """
+    global _original_torch_device
+
+    if _original_torch_device is not None:
+        return  # Already patched
+
+    _original_torch_device = torch.device
+    DeviceFactoryWrapper._original = _original_torch_device
+
+    # Replace torch.device with our wrapper
+    torch.device = DeviceFactoryWrapper
 
 
 def _wrap_factory_function(original_fn: Callable) -> Callable:
@@ -193,6 +298,14 @@ def _patch_torch_cuda_module():
         # Patch torch.cuda.profiler
         if hasattr(torch.musa, 'profiler'):
             sys.modules['torch.cuda.profiler'] = torch.musa.profiler
+
+        # Patch torch.cuda.nvtx - use our stub since MUSA doesn't have nvtx
+        try:
+            from .cuda import nvtx as nvtx_stub
+            sys.modules['torch.cuda.nvtx'] = nvtx_stub
+            torch.musa.nvtx = nvtx_stub
+        except ImportError:
+            pass
 
 
 def _patch_distributed_backend():
@@ -280,6 +393,43 @@ def _patch_is_cuda_available():
     pass
 
 
+def _patch_torch_version():
+    """
+    Patch torch.version.cuda to return MUSA version on MUSA platform.
+
+    This allows code that checks torch.version.cuda to work on MUSA.
+    """
+    if hasattr(torch.version, 'musa') and torch.version.musa is not None:
+        # Set torch.version.cuda to the MUSA version
+        torch.version.cuda = str(torch.version.musa)
+
+
+def _patch_tensor_is_cuda():
+    """
+    Patch torch.Tensor.is_cuda property to return True for MUSA tensors.
+
+    This allows code that checks tensor.is_cuda to work on MUSA.
+    We patch the is_cuda property to also return True for MUSA tensors.
+    """
+    # Store the original is_cuda property (it's a getset_descriptor)
+    original_is_cuda = torch.Tensor.is_cuda
+
+    @property
+    def patched_is_cuda(self):
+        """Return True if tensor is on CUDA or MUSA device."""
+        # Check original is_cuda first
+        try:
+            if original_is_cuda.__get__(self):
+                return True
+        except Exception:
+            pass
+        # Also return True for MUSA tensors
+        return getattr(self, 'is_musa', False)
+
+    # Replace is_cuda with our patched version
+    torch.Tensor.is_cuda = patched_is_cuda
+
+
 def _patch_autocast():
     """
     Ensure torch.amp.autocast works with 'cuda' device_type on MUSA.
@@ -339,8 +489,12 @@ def apply_patches():
     and they will be transparently redirected to torch.musa on MUSA platform.
 
     This includes:
+    - torch.device("cuda") -> torch.device("musa")
+    - torch.version.cuda -> MUSA version string
     - torch.cuda.* API -> torch.musa.*
+    - torch.cuda.nvtx -> no-op stub
     - torch.Tensor.cuda() -> torch.Tensor.musa()
+    - torch.Tensor.is_cuda_compat property (True for CUDA or MUSA tensors)
     - torch.nn.Module.cuda() -> torch.nn.Module.musa()
     - Device string translation ("cuda" -> "musa")
     - torch.distributed with 'nccl' backend -> 'mccl'
@@ -366,6 +520,15 @@ def apply_patches():
     except ImportError:
         _patched = True
         return
+
+    # Patch torch.device to translate cuda to musa
+    _patch_torch_device()
+
+    # Patch torch.version.cuda to return MUSA version
+    _patch_torch_version()
+
+    # Patch torch.Tensor to add is_cuda_compat property
+    _patch_tensor_is_cuda()
 
     # Patch torch.cuda module to redirect to torch.musa
     _patch_torch_cuda_module()
