@@ -430,6 +430,22 @@ class TestStreamAndEvent:
 
         assert hasattr(torch.cuda, 'stream')
 
+    def test_stream_cuda_stream_property(self):
+        """Test stream.cuda_stream returns same value as stream.musa_stream on MUSA."""
+        import torchada
+        import torch
+
+        if torchada.is_musa_platform() and torch.cuda.is_available():
+            try:
+                stream = torch.cuda.Stream()
+                assert hasattr(stream, 'cuda_stream')
+                assert hasattr(stream, 'musa_stream')
+                assert stream.cuda_stream == stream.musa_stream
+            except RuntimeError as e:
+                if "MUSA" in str(e) or "invalid device function" in str(e):
+                    pytest.skip(f"MUSA driver issue: {e}")
+                raise
+
 
 class TestContextManagers:
     """Test device context managers."""

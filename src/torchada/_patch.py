@@ -430,6 +430,28 @@ def _patch_tensor_is_cuda():
     torch.Tensor.is_cuda = patched_is_cuda
 
 
+def _patch_stream_cuda_stream():
+    """
+    Patch MUSA Stream class to add cuda_stream property.
+
+    This allows code that accesses stream.cuda_stream to work on MUSA.
+    The cuda_stream property returns the same value as musa_stream.
+    """
+    try:
+        from torch_musa.core.stream import Stream as MUSAStream
+    except ImportError:
+        return
+
+    # Add cuda_stream property that returns musa_stream
+    if not hasattr(MUSAStream, 'cuda_stream'):
+        @property
+        def cuda_stream(self):
+            """Return the underlying stream pointer (same as musa_stream)."""
+            return self.musa_stream
+
+        MUSAStream.cuda_stream = cuda_stream
+
+
 def _patch_autocast():
     """
     Ensure torch.amp.autocast works with 'cuda' device_type on MUSA.
@@ -493,8 +515,9 @@ def apply_patches():
     - torch.version.cuda -> MUSA version string
     - torch.cuda.* API -> torch.musa.*
     - torch.cuda.nvtx -> no-op stub
+    - torch.cuda.Stream.cuda_stream -> musa_stream
     - torch.Tensor.cuda() -> torch.Tensor.musa()
-    - torch.Tensor.is_cuda_compat property (True for CUDA or MUSA tensors)
+    - torch.Tensor.is_cuda -> True for MUSA tensors
     - torch.nn.Module.cuda() -> torch.nn.Module.musa()
     - Device string translation ("cuda" -> "musa")
     - torch.distributed with 'nccl' backend -> 'mccl'
@@ -527,8 +550,11 @@ def apply_patches():
     # Patch torch.version.cuda to return MUSA version
     _patch_torch_version()
 
-    # Patch torch.Tensor to add is_cuda_compat property
+    # Patch torch.Tensor.is_cuda to return True for MUSA tensors
     _patch_tensor_is_cuda()
+
+    # Patch MUSA Stream to add cuda_stream property
+    _patch_stream_cuda_stream()
 
     # Patch torch.cuda module to redirect to torch.musa
     _patch_torch_cuda_module()
