@@ -258,12 +258,53 @@ _FACTORY_FUNCTIONS = [
 ]
 
 
+class _CudaModuleWrapper(ModuleType):
+    """
+    A wrapper module that redirects torch.cuda to torch.musa,
+    but keeps certain attributes (like is_available) pointing to the original.
+
+    This allows downstream projects to detect MUSA platform using:
+        torch.cuda.is_available()  # Returns False on MUSA (original behavior)
+    While still using torch.cuda.* APIs that redirect to torch.musa.
+    """
+
+    # Attributes that should NOT be redirected to torch.musa
+    _NO_REDIRECT = {'is_available'}
+
+    def __init__(self, original_cuda, musa_module):
+        super().__init__('torch.cuda')
+        self._original_cuda = original_cuda
+        self._musa_module = musa_module
+
+    def __getattr__(self, name):
+        # Keep original is_available behavior
+        if name in self._NO_REDIRECT:
+            return getattr(self._original_cuda, name)
+        # Redirect everything else to torch.musa
+        return getattr(self._musa_module, name)
+
+    def __dir__(self):
+        # Combine attributes from both modules
+        attrs = set(dir(self._musa_module))
+        attrs.update(self._NO_REDIRECT)
+        return list(attrs)
+
+
+# Store original torch.cuda module before patching
+_original_torch_cuda = None
+
+
 def _patch_torch_cuda_module():
     """
     Patch torch.cuda to redirect to torch.musa on MUSA platform.
 
     This allows developers to use torch.cuda.* APIs transparently.
+
+    Note: torch.cuda.is_available() is NOT redirected - it keeps the original
+    behavior to allow downstream projects to detect the platform properly.
     """
+    global _original_torch_cuda
+
     try:
         import torch_musa
     except ImportError:
@@ -272,12 +313,20 @@ def _patch_torch_cuda_module():
     # torch_musa registers itself as torch.musa when imported
     # Now patch torch.cuda to point to torch.musa (which is torch_musa)
     if hasattr(torch, 'musa'):
-        # Replace torch.cuda with torch.musa in sys.modules
+        # Save original torch.cuda before patching
+        if _original_torch_cuda is None:
+            _original_torch_cuda = torch.cuda
+
+        # Create wrapper module that redirects most things to torch.musa
+        # but keeps is_available pointing to the original
+        cuda_wrapper = _CudaModuleWrapper(_original_torch_cuda, torch.musa)
+
+        # Replace torch.cuda with our wrapper in sys.modules
         # This makes 'from torch.cuda import ...' work
-        sys.modules['torch.cuda'] = torch.musa
+        sys.modules['torch.cuda'] = cuda_wrapper
 
         # Also patch torch.cuda attribute directly
-        torch.cuda = torch.musa
+        torch.cuda = cuda_wrapper
 
         # Patch torch.cuda.amp
         if hasattr(torch.musa, 'amp'):
@@ -586,7 +635,7 @@ def apply_patches():
     _patch_torch_device()
 
     # Patch torch.version.cuda to return MUSA version
-    _patch_torch_version()
+    # _patch_torch_version()
 
     # Patch torch.Tensor.is_cuda to return True for MUSA tensors
     _patch_tensor_is_cuda()

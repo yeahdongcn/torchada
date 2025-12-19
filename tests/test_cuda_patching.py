@@ -24,7 +24,13 @@ class TestTorchCudaModule:
             assert "cuda" in torch.cuda.__name__
 
     def test_torch_cuda_is_available(self):
-        """Test torch.cuda.is_available() works."""
+        """Test torch.cuda.is_available() is NOT redirected on MUSA.
+
+        This is intentionally NOT redirected to allow downstream projects
+        to detect the MUSA platform using patterns like:
+            if torch.cuda.is_available():  # CUDA
+            elif torch.musa.is_available():  # MUSA
+        """
         import torchada
         import torch
 
@@ -32,9 +38,12 @@ class TestTorchCudaModule:
         assert isinstance(result, bool)
 
         if torchada.is_musa_platform():
-            # On MUSA platform, should return True if MUSA is available
+            # On MUSA platform, torch.cuda.is_available() should return False
+            # because CUDA is not available - only MUSA is
+            assert result is False
+            # But torch.musa.is_available() should return True
             import torch_musa
-            assert result == torch_musa.is_available()
+            assert torch_musa.is_available() is True
 
     def test_torch_cuda_device_count(self):
         """Test torch.cuda.device_count() works."""
@@ -511,24 +520,26 @@ class TestDeviceFunctions:
 
 
 class TestTorchVersionCuda:
-    """Test torch.version.cuda patching."""
+    """Test torch.version.cuda is NOT patched.
 
-    def test_torch_version_cuda_is_set(self):
-        """Test torch.version.cuda is set on MUSA platform."""
+    This is intentionally NOT patched to allow downstream projects
+    to detect the MUSA platform using patterns like:
+        if torch.version.cuda is not None:  # CUDA
+        elif hasattr(torch.version, 'musa'):  # MUSA
+    """
+
+    def test_torch_version_cuda_not_patched(self):
+        """Test torch.version.cuda is NOT patched on MUSA platform."""
         import torchada
         import torch
 
         if torchada.is_musa_platform():
-            assert torch.version.cuda is not None
-            assert isinstance(torch.version.cuda, str)
-
-    def test_torch_version_cuda_matches_musa(self):
-        """Test torch.version.cuda matches torch.version.musa on MUSA platform."""
-        import torchada
-        import torch
-
-        if torchada.is_musa_platform():
-            assert torch.version.cuda == str(torch.version.musa)
+            # torch.version.cuda should remain None on MUSA
+            # This allows downstream projects to detect the platform
+            assert torch.version.cuda is None
+            # But torch.version.musa should be set
+            assert torch.version.musa is not None
+            assert isinstance(torch.version.musa, str)
 
 
 class TestTensorIsCuda:
