@@ -248,6 +248,15 @@ class TestDistributedBackend:
 
         assert hasattr(dist.Backend, 'NCCL')
 
+    def test_new_group_patched(self):
+        """Test new_group is patched to translate nccl->mccl."""
+        import torchada
+        import torch.distributed as dist
+
+        if torchada.is_musa_platform():
+            # Check new_group is wrapped
+            assert hasattr(dist.new_group, '__wrapped__')
+
 
 class TestNCCLModule:
     """Test NCCL to MCCL module patching."""

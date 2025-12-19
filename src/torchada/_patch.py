@@ -366,6 +366,44 @@ def _patch_distributed_backend():
 
     dist.init_process_group = patched_init_process_group
 
+    # Also patch new_group to translate 'nccl' to 'mccl'
+    original_new_group = dist.new_group
+
+    @functools.wraps(original_new_group)
+    def patched_new_group(
+        ranks=None,
+        timeout=None,
+        backend=None,
+        pg_options=None,
+        use_local_synchronization=False,
+        group_desc=None,
+        device_id=None,
+    ):
+        # Translate 'nccl' to 'mccl' on MUSA platform
+        if is_musa_platform() and backend is not None:
+            if isinstance(backend, str) and backend.lower() == 'nccl':
+                backend = 'mccl'
+
+        # Translate device_id if it's a cuda device
+        if device_id is not None:
+            device_id = _translate_device(device_id)
+
+        # Build kwargs for the original function
+        kwargs = {
+            'ranks': ranks,
+            'backend': backend,
+            'pg_options': pg_options,
+            'use_local_synchronization': use_local_synchronization,
+            'group_desc': group_desc,
+            'device_id': device_id,
+        }
+        if timeout is not None:
+            kwargs['timeout'] = timeout
+
+        return original_new_group(**kwargs)
+
+    dist.new_group = patched_new_group
+
 
 def _patch_nccl_module():
     """
