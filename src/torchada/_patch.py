@@ -24,11 +24,11 @@ Usage:
 import functools
 import sys
 from types import ModuleType
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 import torch
 
-from ._platform import is_musa_platform, get_device_name
+from ._platform import is_musa_platform
 
 
 _patched = False
@@ -123,53 +123,6 @@ def _wrap_module_cuda(original_cuda: Callable) -> Callable:
 
 
 _original_torch_device = None
-
-
-class _DeviceFactory:
-    """
-    A callable class that wraps torch.device to translate 'cuda' to 'musa'.
-
-    This class mimics torch.device behavior while translating device strings.
-    It maintains isinstance() compatibility by returning actual torch.device objects.
-    """
-
-    def __init__(self, original_device_class):
-        self._original = original_device_class
-        # Copy class attributes for compatibility
-        self.__doc__ = original_device_class.__doc__
-        self.__name__ = 'device'
-        self.__qualname__ = 'device'
-        self.__module__ = 'torch'
-
-    def __call__(self, device=None, index=None):
-        # Handle the case where device is already a torch.device
-        if isinstance(device, self._original):
-            if device.type == "cuda":
-                device = "musa"
-                index = device.index if index is None else index
-            else:
-                return device
-
-        # Handle string device
-        if isinstance(device, str):
-            device = _translate_device(device)
-
-        # Create the actual device
-        if index is not None:
-            return self._original(device, index)
-        elif device is not None:
-            return self._original(device)
-        else:
-            return self._original()
-
-    def __instancecheck__(cls, instance):
-        """Make isinstance(x, torch.device) work correctly."""
-        return isinstance(instance, cls._original)
-
-    # Make this class work with isinstance() by implementing __class__
-    @property
-    def __class__(self):
-        return type(self._original)
 
 
 class _DeviceFactoryMeta(type):
@@ -454,22 +407,6 @@ def _patch_distributed_backend():
     dist.new_group = patched_new_group
 
 
-def _patch_nccl_module():
-    """
-    Create torch.cuda.nccl module that redirects to MCCL.
-
-    This allows code importing torch.cuda.nccl to work on MUSA.
-    """
-    try:
-        import torch_musa
-    except ImportError:
-        return
-
-    if hasattr(torch_musa, 'mccl'):
-        # Create a wrapper module for nccl -> mccl
-        sys.modules['torch.cuda.nccl'] = torch_musa.mccl
-
-
 def _patch_tensor_is_cuda():
     """
     Patch torch.Tensor.is_cuda property to return True for MUSA tensors.
@@ -640,13 +577,11 @@ def apply_patches():
     _patch_stream_cuda_stream()
 
     # Patch torch.cuda module to redirect to torch.musa
+    # Note: This also patches torch.cuda.nccl -> torch.musa.mccl
     _patch_torch_cuda_module()
 
     # Patch torch.distributed to use MCCL when NCCL is requested
     _patch_distributed_backend()
-
-    # Patch torch.cuda.nccl module
-    _patch_nccl_module()
 
     # Patch torch.amp.autocast for device_type translation
     _patch_autocast()

@@ -16,10 +16,9 @@ Usage (preferred):
         tensor = tensor.cuda()
 """
 
-import sys
-from typing import Any, Optional, Union, List
+from typing import Optional, Union
 
-from .._platform import detect_platform, Platform, is_musa_platform, is_cuda_platform
+from .._platform import detect_platform, Platform
 
 
 def _get_backend():
