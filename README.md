@@ -1,3 +1,9 @@
+<div align="center" id="sglangtop">
+<img src="https://raw.githubusercontent.com/yeahdongcn/torchada/main/assets/logo.png" alt="logo" width="100" margin="10px"></img>
+</div>
+
+--------------------------------------------------------------------------------
+
 # torchada
 
 **Adapter package for torch_musa to act exactly like PyTorch CUDA**
