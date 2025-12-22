@@ -1,7 +1,7 @@
 # Migrating Existing CUDA Projects to torchada
 
 This guide shows how to migrate an existing PyTorch CUDA project to use torchada,
-making it compatible with multiple GPU platforms.
+making it compatible with multiple GPU platforms (CUDA and MUSA).
 
 ## Quick Migration
 
@@ -29,6 +29,23 @@ from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 That's it! **No other code changes needed.** Your existing `torch.cuda.*` code
 and `torch.utils.cpp_extension` imports work on all supported platforms.
 
+## Important Note on GPU Detection
+
+`torch.cuda.is_available()` returns `False` on MUSA platform by design. This allows
+downstream projects to properly detect the platform. Use the following pattern:
+
+```python
+import torchada
+
+# Check for any GPU (CUDA or MUSA)
+def is_gpu_available():
+    return torchada.is_musa_platform() or torch.cuda.is_available()
+
+if is_gpu_available():
+    # Use GPU
+    tensor = tensor.cuda()
+```
+
 ## Detailed Migration Examples
 
 ### Example 1: Basic GPU Usage
@@ -45,13 +62,13 @@ if torch.cuda.is_available():
 
 **After:**
 ```python
-import torchada  # Add this line at the top - that's it!
+import torchada  # Add this line at the top
 import torch
 
-# Rest of the code stays exactly the same!
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-    tensor = torch.randn(100, 100).cuda()
+# Update GPU availability check to work on both CUDA and MUSA
+if torchada.is_musa_platform() or torch.cuda.is_available():
+    device = torch.device("cuda")  # Works on MUSA too!
+    tensor = torch.randn(100, 100).cuda()  # Moves to MUSA on MUSA platform
     model = MyModel().cuda()
 ```
 
@@ -63,8 +80,9 @@ All standard `torch.cuda` APIs work after importing torchada:
 import torchada
 import torch
 
-if torch.cuda.is_available():
+if torchada.is_musa_platform() or torch.cuda.is_available():
     torch.cuda.set_device(0)
+    print(f"Platform: {torchada.get_platform().name}")
     print(f"Using: {torch.cuda.get_device_name()}")
     print(f"Memory: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
     torch.cuda.synchronize()
@@ -209,7 +227,24 @@ torch.cuda.synchronize()
 ## Tips for Migration
 
 1. **Import torchada first**: Always import torchada before torch to ensure patches are applied
-2. **Keep standard imports**: Use `from torch.utils.cpp_extension import ...` (not from torchada)
-3. **Keep "cuda" strings**: No need to change device strings - torchada handles platform differences
-4. **Test your code**: Verify your code works correctly after adding the torchada import
+2. **Update GPU checks**: Replace `torch.cuda.is_available()` with `torchada.is_musa_platform() or torch.cuda.is_available()`
+3. **Keep standard imports**: Use `from torch.utils.cpp_extension import ...` (not from torchada)
+4. **Keep "cuda" strings**: No need to change device strings - torchada handles platform differences
+5. **Test your code**: Verify your code works correctly after adding the torchada import
+
+## Why torch.cuda.is_available() Returns False on MUSA
+
+By design, `torch.cuda.is_available()` is NOT redirected to `torch.musa.is_available()`.
+This allows downstream projects (like SGLang, vLLM) to properly detect the platform using
+patterns like:
+
+```python
+if torch.version.cuda is not None:
+    # CUDA platform
+elif hasattr(torch, 'musa') and torch.musa.is_available():
+    # MUSA platform
+```
+
+Use `torchada.is_musa_platform()` to check for MUSA, and `torchada.get_platform()` to get
+the current platform enum.
 

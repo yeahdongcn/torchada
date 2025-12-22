@@ -18,7 +18,7 @@ Usage (preferred):
 
 from typing import Optional, Union
 
-from .._platform import detect_platform, Platform
+from .._platform import Platform, detect_platform
 
 
 def _get_backend():
@@ -26,15 +26,18 @@ def _get_backend():
     platform = detect_platform()
 
     if platform == Platform.MUSA:
-        import torch_musa
         import torch
+        import torch_musa
+
         return torch.musa
     elif platform == Platform.CUDA:
         import torch
+
         return torch.cuda
     else:
         # Return torch.cuda for API compatibility, even if not available
         import torch
+
         return torch.cuda
 
 
@@ -47,7 +50,7 @@ def is_available() -> bool:
 def device_count() -> int:
     """Return the number of GPUs available."""
     backend = _get_backend()
-    if hasattr(backend, 'device_count'):
+    if hasattr(backend, "device_count"):
         return backend.device_count()
     return 0
 
@@ -142,14 +145,14 @@ def _setup_stream_event_classes():
     # These will be the actual classes from the backend
     global Stream, Event, current_stream, default_stream, stream
 
-    Stream = backend.Stream if hasattr(backend, 'Stream') else None
-    Event = backend.Event if hasattr(backend, 'Event') else None
+    Stream = backend.Stream if hasattr(backend, "Stream") else None
+    Event = backend.Event if hasattr(backend, "Event") else None
 
-    if hasattr(backend, 'current_stream'):
+    if hasattr(backend, "current_stream"):
         current_stream = backend.current_stream
-    if hasattr(backend, 'default_stream'):
+    if hasattr(backend, "default_stream"):
         default_stream = backend.default_stream
-    if hasattr(backend, 'stream'):
+    if hasattr(backend, "stream"):
         stream = backend.stream
 
 
@@ -162,4 +165,3 @@ except:
     current_stream = None
     default_stream = None
     stream = None
-

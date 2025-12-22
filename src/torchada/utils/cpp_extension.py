@@ -27,11 +27,10 @@ Usage (preferred):
 
 import os
 import re
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from .._platform import detect_platform, Platform, is_musa_platform
 from .._mapping import _MAPPING_RULE, EXT_REPLACED_MAPPING
-
+from .._platform import Platform, detect_platform, is_musa_platform
 
 # Flag to track if torch_musa patches have been applied
 _musa_patches_applied = False
@@ -66,6 +65,7 @@ def _get_cuda_home() -> Optional[str]:
         # Use torch's CUDA_HOME
         try:
             from torch.utils.cpp_extension import CUDA_HOME as TORCH_CUDA_HOME
+
             return TORCH_CUDA_HOME
         except ImportError:
             cuda_home = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
@@ -143,7 +143,9 @@ _apply_musa_patches()
 CUDA_HOME = _get_cuda_home()
 
 
-def _port_cuda_source(source_code: str, mapping_rules: Optional[Dict[str, str]] = None) -> str:
+def _port_cuda_source(
+    source_code: str, mapping_rules: Optional[Dict[str, str]] = None
+) -> str:
     """
     Port CUDA source code to MUSA by applying mapping rules.
 
@@ -184,7 +186,8 @@ def include_paths(cuda: bool = True) -> List[str]:
     if platform == Platform.MUSA:
         try:
             import torch_musa.utils.musa_extension as musa_ext
-            if hasattr(musa_ext, 'include_paths'):
+
+            if hasattr(musa_ext, "include_paths"):
                 return musa_ext.include_paths(cuda=cuda)
         except ImportError:
             pass
@@ -198,6 +201,7 @@ def include_paths(cuda: bool = True) -> List[str]:
 
     else:
         from torch.utils.cpp_extension import include_paths as torch_include_paths
+
         return torch_include_paths(cuda=cuda)
 
 
@@ -223,6 +227,7 @@ def library_paths(cuda: bool = True) -> List[str]:
 
     else:
         from torch.utils.cpp_extension import library_paths as torch_library_paths
+
         return torch_library_paths(cuda=cuda)
 
 
@@ -260,12 +265,14 @@ class CppExtension:
     def __new__(cls, name: str, sources: List[str], *args, **kwargs):
         """Create a C++ extension module."""
         from torch.utils.cpp_extension import CppExtension as TorchCppExtension
+
         return TorchCppExtension(name, sources, *args, **kwargs)
 
 
 def _create_cuda_extension(name: str, sources: List[str], *args, **kwargs):
     """Create a CUDA extension using torch's CUDAExtension."""
     from torch.utils.cpp_extension import CUDAExtension as TorchCUDAExtension
+
     return TorchCUDAExtension(name, sources, *args, **kwargs)
 
 
@@ -283,11 +290,13 @@ def _create_musa_extension(name: str, sources: List[str], *args, **kwargs):
 
     try:
         import torch_musa.utils.musa_extension as musa_ext
+
         # Simply pass sources to MUSAExtension - patches make it accept .cu files
         return musa_ext.MUSAExtension(name, sources, *args, **kwargs)
     except ImportError:
         # Fallback to torch's CUDAExtension if torch_musa is not available
         from torch.utils.cpp_extension import CUDAExtension as TorchCUDAExtension
+
         return TorchCUDAExtension(name, sources, *args, **kwargs)
 
 
@@ -338,14 +347,18 @@ def _get_build_extension_class():
                             base_name, ext_name = os.path.splitext(source_file)
                             ext_name = ext_name.lower()
 
-                            if ext_name in ['.cu', '.cuh']:
+                            if ext_name in [".cu", ".cuh"]:
                                 # Track this directory for porting
                                 dirs_to_port.add(source_dir)
                                 # Update source path to point to _musa directory
                                 # SimplePorting converts .cu -> .mu, .cuh -> .muh
                                 musa_dir = source_dir + "_musa"
-                                new_ext = EXT_REPLACED_MAPPING.get(ext_name[1:], ext_name[1:])
-                                new_source = os.path.join(musa_dir, base_name + "." + new_ext)
+                                new_ext = EXT_REPLACED_MAPPING.get(
+                                    ext_name[1:], ext_name[1:]
+                                )
+                                new_source = os.path.join(
+                                    musa_dir, base_name + "." + new_ext
+                                )
                                 new_sources.append(new_source)
                             else:
                                 new_sources.append(source)
@@ -354,8 +367,7 @@ def _get_build_extension_class():
                         for cuda_dir in dirs_to_port:
                             if cuda_dir not in self._ported_dirs:
                                 musa_sp.SimplePorting(
-                                    cuda_dir_path=cuda_dir,
-                                    mapping_rule=_MAPPING_RULE
+                                    cuda_dir_path=cuda_dir, mapping_rule=_MAPPING_RULE
                                 ).run()
                                 self._ported_dirs.add(cuda_dir)
 
@@ -370,6 +382,7 @@ def _get_build_extension_class():
 
     # Fallback to torch's BuildExtension
     from torch.utils.cpp_extension import BuildExtension as TorchBuildExtension
+
     return TorchBuildExtension
 
 
@@ -424,7 +437,7 @@ def load(
             import torch_musa.utils.musa_extension as musa_ext
 
             # Use MUSA's load function if available
-            if hasattr(musa_ext, 'load'):
+            if hasattr(musa_ext, "load"):
                 return musa_ext.load(
                     name=name,
                     sources=sources,
@@ -444,6 +457,7 @@ def load(
 
     # Fallback to torch's load
     from torch.utils.cpp_extension import load as torch_load
+
     return torch_load(
         name=name,
         sources=sources,
@@ -490,6 +504,7 @@ def load_inline(
             cuda_sources = [_port_cuda_source(src) for src in cuda_sources]
 
     from torch.utils.cpp_extension import load_inline as torch_load_inline
+
     return torch_load_inline(
         name=name,
         cpp_sources=cpp_sources,
@@ -521,4 +536,3 @@ __all__ = [
     "load",
     "load_inline",
 ]
-

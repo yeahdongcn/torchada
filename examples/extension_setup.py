@@ -12,18 +12,19 @@ Usage:
 """
 
 import os
-from setuptools import setup, find_packages
 
-# Import torchada first to apply patches
-import torchada  # noqa: F401
+from setuptools import find_packages, setup
 
 # Now use standard torch imports - they work on any supported GPU!
 from torch.utils.cpp_extension import (
-    CUDAExtension,
-    CppExtension,
-    BuildExtension,
     CUDA_HOME,
+    BuildExtension,
+    CppExtension,
+    CUDAExtension,
 )
+
+# Import torchada first to apply patches
+import torchada  # noqa: F401
 
 
 def get_extensions():
@@ -89,4 +90,3 @@ if __name__ == "__main__":
         print("  │   └── my_kernel.cu      # CUDA kernels")
         print("  └── my_extension/")
         print("      └── __init__.py       # Python package")
-

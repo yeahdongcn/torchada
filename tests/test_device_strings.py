@@ -10,8 +10,9 @@ class TestTensorDevicePatching:
 
     def test_tensor_cuda_method(self):
         """Test .cuda() method on tensors."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             x = torch.randn(2, 2)
@@ -22,8 +23,9 @@ class TestTensorDevicePatching:
 
     def test_tensor_to_cuda_string(self):
         """Test .to('cuda') on tensors."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             x = torch.randn(2, 2)
@@ -34,8 +36,9 @@ class TestTensorDevicePatching:
 
     def test_tensor_to_cuda_device_index(self):
         """Test .to('cuda:0') on tensors."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             x = torch.randn(2, 2)
@@ -47,8 +50,9 @@ class TestTensorDevicePatching:
 
     def test_tensor_to_torch_device(self):
         """Test .to(torch.device('cuda')) on tensors."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             x = torch.randn(2, 2)
@@ -61,9 +65,10 @@ class TestModuleDevicePatching:
 
     def test_module_cuda_method(self):
         """Test .cuda() method on modules."""
-        import torchada
         import torch
         import torch.nn as nn
+
+        import torchada
 
         if torch.cuda.is_available():
             model = nn.Linear(10, 5)
@@ -75,9 +80,10 @@ class TestModuleDevicePatching:
 
     def test_module_to_cuda(self):
         """Test .to('cuda') method on modules."""
-        import torchada
         import torch
         import torch.nn as nn
+
+        import torchada
 
         if torch.cuda.is_available():
             model = nn.Linear(10, 5)
@@ -91,8 +97,9 @@ class TestFactoryFunctions:
 
     def test_torch_empty_device_cuda(self):
         """Test torch.empty(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             x = torch.empty(2, 2, device="cuda")
@@ -102,8 +109,9 @@ class TestFactoryFunctions:
 
     def test_torch_zeros_device_cuda(self):
         """Test torch.zeros(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -117,8 +125,9 @@ class TestFactoryFunctions:
 
     def test_torch_ones_device_cuda(self):
         """Test torch.ones(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -131,8 +140,9 @@ class TestFactoryFunctions:
 
     def test_torch_randn_device_cuda(self):
         """Test torch.randn(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -145,8 +155,9 @@ class TestFactoryFunctions:
 
     def test_torch_rand_device_cuda(self):
         """Test torch.rand(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -159,8 +170,9 @@ class TestFactoryFunctions:
 
     def test_torch_full_device_cuda(self):
         """Test torch.full(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -173,8 +185,9 @@ class TestFactoryFunctions:
 
     def test_torch_arange_device_cuda(self):
         """Test torch.arange(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -187,8 +200,9 @@ class TestFactoryFunctions:
 
     def test_torch_linspace_device_cuda(self):
         """Test torch.linspace(device='cuda')."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -198,4 +212,3 @@ class TestFactoryFunctions:
                 if "MUSA" in str(e) or "invalid device function" in str(e):
                     pytest.skip(f"MUSA driver issue: {e}")
                 raise
-

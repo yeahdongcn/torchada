@@ -30,7 +30,6 @@ import torch
 
 from ._platform import is_musa_platform
 
-
 _patched = False
 _original_init_process_group = None
 
@@ -85,6 +84,7 @@ def requires_import(*module_names: str) -> Callable[[Callable], Callable]:
     Returns:
         A decorator that wraps the function with import guards
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -94,7 +94,9 @@ def requires_import(*module_names: str) -> Callable[[Callable], Callable]:
                 except ImportError:
                     return None
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -131,6 +133,7 @@ def _translate_device(device: Any) -> Any:
 
 def _wrap_to_method(original_to: Callable) -> Callable:
     """Wrap tensor.to() to translate device strings."""
+
     @functools.wraps(original_to)
     def wrapped_to(self, *args, **kwargs):
         # Translate device in positional args
@@ -155,11 +158,12 @@ def _wrap_to_method(original_to: Callable) -> Callable:
 
 def _wrap_tensor_cuda(original_cuda: Callable) -> Callable:
     """Wrap tensor.cuda() to use musa on MUSA platform."""
+
     @functools.wraps(original_cuda)
     def wrapped_cuda(self, device=None, non_blocking=False):
         if is_musa_platform():
             # Use .musa() instead
-            if hasattr(self, 'musa'):
+            if hasattr(self, "musa"):
                 return self.musa(device=device, non_blocking=non_blocking)
             else:
                 # Fallback to .to()
@@ -172,10 +176,11 @@ def _wrap_tensor_cuda(original_cuda: Callable) -> Callable:
 
 def _wrap_module_cuda(original_cuda: Callable) -> Callable:
     """Wrap nn.Module.cuda() to use musa on MUSA platform."""
+
     @functools.wraps(original_cuda)
     def wrapped_cuda(self, device=None):
         if is_musa_platform():
-            if hasattr(self, 'musa'):
+            if hasattr(self, "musa"):
                 return self.musa(device=device)
             else:
                 target_device = f"musa:{device}" if device is not None else "musa"
@@ -208,6 +213,7 @@ class DeviceFactoryWrapper(metaclass=_DeviceFactoryMeta):
 
     Uses a metaclass to properly handle isinstance() checks.
     """
+
     _original = None
 
     def __new__(cls, device=None, index=None):
@@ -257,21 +263,42 @@ def _patch_torch_device():
 
 def _wrap_factory_function(original_fn: Callable) -> Callable:
     """Wrap tensor factory functions (empty, zeros, ones, etc.) to translate device."""
+
     @functools.wraps(original_fn)
     def wrapped_fn(*args, **kwargs):
         if "device" in kwargs:
             kwargs["device"] = _translate_device(kwargs["device"])
         return original_fn(*args, **kwargs)
+
     return wrapped_fn
 
 
 # List of torch factory functions that accept a device argument
 _FACTORY_FUNCTIONS = [
-    'empty', 'zeros', 'ones', 'full', 'rand', 'randn', 'randint',
-    'arange', 'linspace', 'logspace', 'eye', 'tensor',
-    'as_tensor', 'from_numpy', 'empty_like', 'zeros_like', 'ones_like',
-    'full_like', 'rand_like', 'randn_like', 'randint_like',
-    'empty_strided', 'sparse_coo_tensor', 'sparse_csr_tensor',
+    "empty",
+    "zeros",
+    "ones",
+    "full",
+    "rand",
+    "randn",
+    "randint",
+    "arange",
+    "linspace",
+    "logspace",
+    "eye",
+    "tensor",
+    "as_tensor",
+    "from_numpy",
+    "empty_like",
+    "zeros_like",
+    "ones_like",
+    "full_like",
+    "rand_like",
+    "randn_like",
+    "randint_like",
+    "empty_strided",
+    "sparse_coo_tensor",
+    "sparse_csr_tensor",
 ]
 
 
@@ -286,10 +313,10 @@ class _CudaModuleWrapper(ModuleType):
     """
 
     # Attributes that should NOT be redirected to torch.musa
-    _NO_REDIRECT = {'is_available'}
+    _NO_REDIRECT = {"is_available"}
 
     def __init__(self, original_cuda, musa_module):
-        super().__init__('torch.cuda')
+        super().__init__("torch.cuda")
         self._original_cuda = original_cuda
         self._musa_module = musa_module
 
@@ -312,7 +339,7 @@ _original_torch_cuda = None
 
 
 @patch_function
-@requires_import('torch_musa')
+@requires_import("torch_musa")
 def _patch_torch_cuda_module():
     """
     Patch torch.cuda to redirect to torch.musa on MUSA platform.
@@ -326,7 +353,7 @@ def _patch_torch_cuda_module():
 
     # torch_musa registers itself as torch.musa when imported
     # Now patch torch.cuda to point to torch.musa (which is torch_musa)
-    if hasattr(torch, 'musa'):
+    if hasattr(torch, "musa"):
         # Save original torch.cuda before patching
         if _original_torch_cuda is None:
             _original_torch_cuda = torch.cuda
@@ -337,35 +364,36 @@ def _patch_torch_cuda_module():
 
         # Replace torch.cuda with our wrapper in sys.modules
         # This makes 'from torch.cuda import ...' work
-        sys.modules['torch.cuda'] = cuda_wrapper
+        sys.modules["torch.cuda"] = cuda_wrapper
 
         # Also patch torch.cuda attribute directly
         torch.cuda = cuda_wrapper
 
         # Patch torch.cuda.amp
-        if hasattr(torch.musa, 'amp'):
-            sys.modules['torch.cuda.amp'] = torch.musa.amp
+        if hasattr(torch.musa, "amp"):
+            sys.modules["torch.cuda.amp"] = torch.musa.amp
 
         # Patch torch.cuda.graphs - MUSAGraph should be accessible as CUDAGraph
-        if hasattr(torch.musa, 'graphs'):
-            sys.modules['torch.cuda.graphs'] = torch.musa.graphs
+        if hasattr(torch.musa, "graphs"):
+            sys.modules["torch.cuda.graphs"] = torch.musa.graphs
 
         # Add CUDAGraph alias pointing to MUSAGraph
-        if hasattr(torch.musa, 'MUSAGraph') and not hasattr(torch.musa, 'CUDAGraph'):
+        if hasattr(torch.musa, "MUSAGraph") and not hasattr(torch.musa, "CUDAGraph"):
             torch.musa.CUDAGraph = torch.musa.MUSAGraph
 
         # Patch torch.cuda.nccl -> torch.musa.mccl
-        if hasattr(torch.musa, 'mccl'):
-            sys.modules['torch.cuda.nccl'] = torch.musa.mccl
+        if hasattr(torch.musa, "mccl"):
+            sys.modules["torch.cuda.nccl"] = torch.musa.mccl
 
         # Patch torch.cuda.profiler
-        if hasattr(torch.musa, 'profiler'):
-            sys.modules['torch.cuda.profiler'] = torch.musa.profiler
+        if hasattr(torch.musa, "profiler"):
+            sys.modules["torch.cuda.profiler"] = torch.musa.profiler
 
         # Patch torch.cuda.nvtx - use our stub since MUSA doesn't have nvtx
         try:
             from .cuda import nvtx as nvtx_stub
-            sys.modules['torch.cuda.nvtx'] = nvtx_stub
+
+            sys.modules["torch.cuda.nvtx"] = nvtx_stub
             torch.musa.nvtx = nvtx_stub
         except ImportError:
             pass
@@ -376,15 +404,16 @@ def _patch_torch_cuda_module():
         # We add it to torch.musa so _CudaModuleWrapper can redirect it
         try:
             from torch_musa.core._lazy_init import _lazy_call
+
             # Only add if not already present (forward compatible with torch_musa fix)
-            if not hasattr(torch.musa, '_lazy_call'):
+            if not hasattr(torch.musa, "_lazy_call"):
                 torch.musa._lazy_call = _lazy_call
         except ImportError:
             pass
 
 
 @patch_function
-@requires_import('torch.distributed')
+@requires_import("torch.distributed")
 def _patch_distributed_backend():
     """
     Patch torch.distributed to automatically use MCCL when NCCL is requested.
@@ -409,14 +438,14 @@ def _patch_distributed_backend():
         world_size: int = -1,
         rank: int = -1,
         store=None,
-        group_name: str = '',
+        group_name: str = "",
         pg_options=None,
         device_id=None,
     ):
         # Translate 'nccl' to 'mccl' on MUSA platform
         if is_musa_platform() and backend is not None:
-            if backend.lower() == 'nccl':
-                backend = 'mccl'
+            if backend.lower() == "nccl":
+                backend = "mccl"
 
         # Translate device_id if it's a cuda device
         if device_id is not None:
@@ -424,17 +453,17 @@ def _patch_distributed_backend():
 
         # Build kwargs for the original function
         kwargs = {
-            'backend': backend,
-            'init_method': init_method,
-            'world_size': world_size,
-            'rank': rank,
-            'store': store,
-            'group_name': group_name,
-            'pg_options': pg_options,
-            'device_id': device_id,
+            "backend": backend,
+            "init_method": init_method,
+            "world_size": world_size,
+            "rank": rank,
+            "store": store,
+            "group_name": group_name,
+            "pg_options": pg_options,
+            "device_id": device_id,
         }
         if timeout is not None:
-            kwargs['timeout'] = timeout
+            kwargs["timeout"] = timeout
 
         return _original_init_process_group(**kwargs)
 
@@ -455,8 +484,8 @@ def _patch_distributed_backend():
     ):
         # Translate 'nccl' to 'mccl' on MUSA platform
         if is_musa_platform() and backend is not None:
-            if isinstance(backend, str) and backend.lower() == 'nccl':
-                backend = 'mccl'
+            if isinstance(backend, str) and backend.lower() == "nccl":
+                backend = "mccl"
 
         # Translate device_id if it's a cuda device
         if device_id is not None:
@@ -464,15 +493,15 @@ def _patch_distributed_backend():
 
         # Build kwargs for the original function
         kwargs = {
-            'ranks': ranks,
-            'backend': backend,
-            'pg_options': pg_options,
-            'use_local_synchronization': use_local_synchronization,
-            'group_desc': group_desc,
-            'device_id': device_id,
+            "ranks": ranks,
+            "backend": backend,
+            "pg_options": pg_options,
+            "use_local_synchronization": use_local_synchronization,
+            "group_desc": group_desc,
+            "device_id": device_id,
         }
         if timeout is not None:
-            kwargs['timeout'] = timeout
+            kwargs["timeout"] = timeout
 
         return original_new_group(**kwargs)
 
@@ -500,14 +529,14 @@ def _patch_tensor_is_cuda():
         except Exception:
             pass
         # Also return True for MUSA tensors
-        return getattr(self, 'is_musa', False)
+        return getattr(self, "is_musa", False)
 
     # Replace is_cuda with our patched version
     torch.Tensor.is_cuda = patched_is_cuda
 
 
 @patch_function
-@requires_import('torch_musa.core.stream')
+@requires_import("torch_musa.core.stream")
 def _patch_stream_cuda_stream():
     """
     Patch MUSA Stream class to add cuda_stream property.
@@ -518,7 +547,8 @@ def _patch_stream_cuda_stream():
     from torch_musa.core.stream import Stream as MUSAStream
 
     # Add cuda_stream property that returns musa_stream
-    if not hasattr(MUSAStream, 'cuda_stream'):
+    if not hasattr(MUSAStream, "cuda_stream"):
+
         @property
         def cuda_stream(self):
             """Return the underlying stream pointer (same as musa_stream)."""
@@ -528,12 +558,12 @@ def _patch_stream_cuda_stream():
 
 
 @patch_function
-@requires_import('torch_musa')
+@requires_import("torch_musa")
 def _patch_autocast():
     """
     Ensure torch.amp.autocast works with 'cuda' device_type on MUSA.
     """
-    if not hasattr(torch, 'amp') or not hasattr(torch.amp, 'autocast'):
+    if not hasattr(torch, "amp") or not hasattr(torch.amp, "autocast"):
         return
 
     original_autocast = torch.amp.autocast
@@ -541,15 +571,15 @@ def _patch_autocast():
     class PatchedAutocast(original_autocast):
         def __init__(self, device_type, *args, **kwargs):
             # Translate 'cuda' to 'musa'
-            if device_type == 'cuda':
-                device_type = 'musa'
+            if device_type == "cuda":
+                device_type = "musa"
             super().__init__(device_type, *args, **kwargs)
 
     torch.amp.autocast = PatchedAutocast
 
 
 @patch_function
-@requires_import('torchada.utils.cpp_extension', 'torch.utils.cpp_extension')
+@requires_import("torchada.utils.cpp_extension", "torch.utils.cpp_extension")
 def _patch_cpp_extension():
     """
     Patch torch.utils.cpp_extension to use torchada's MUSA-compatible versions.
@@ -559,8 +589,9 @@ def _patch_cpp_extension():
 
     And have them work transparently on MUSA platform.
     """
-    from .utils import cpp_extension as torchada_cpp_ext
     import torch.utils.cpp_extension as torch_cpp_ext
+
+    from .utils import cpp_extension as torchada_cpp_ext
 
     # Patch the key classes and functions
     torch_cpp_ext.CUDAExtension = torchada_cpp_ext.CUDAExtension
@@ -568,11 +599,11 @@ def _patch_cpp_extension():
     torch_cpp_ext.CUDA_HOME = torchada_cpp_ext.CUDA_HOME
 
     # Also update sys.modules entry
-    sys.modules['torch.utils.cpp_extension'] = torch_cpp_ext
+    sys.modules["torch.utils.cpp_extension"] = torch_cpp_ext
 
 
 @patch_function
-@requires_import('torch._inductor.autotune_process')
+@requires_import("torch._inductor.autotune_process")
 def _patch_autotune_process():
     """
     Patch torch._inductor.autotune_process to use MUSA_VISIBLE_DEVICES on MUSA platform.
@@ -585,7 +616,7 @@ def _patch_autotune_process():
     import torch._inductor.autotune_process as autotune_process
 
     # Patch the CUDA_VISIBLE_DEVICES constant to use MUSA_VISIBLE_DEVICES
-    if hasattr(autotune_process, 'CUDA_VISIBLE_DEVICES'):
+    if hasattr(autotune_process, "CUDA_VISIBLE_DEVICES"):
         autotune_process.CUDA_VISIBLE_DEVICES = "MUSA_VISIBLE_DEVICES"
 
 
@@ -639,15 +670,15 @@ def apply_patches():
         patch_fn()
 
     # Patch torch.Tensor.to()
-    if hasattr(torch.Tensor, 'to'):
+    if hasattr(torch.Tensor, "to"):
         torch.Tensor.to = _wrap_to_method(torch.Tensor.to)
 
     # Patch torch.Tensor.cuda()
-    if hasattr(torch.Tensor, 'cuda'):
+    if hasattr(torch.Tensor, "cuda"):
         torch.Tensor.cuda = _wrap_tensor_cuda(torch.Tensor.cuda)
 
     # Patch torch.nn.Module.cuda()
-    if hasattr(torch.nn.Module, 'cuda'):
+    if hasattr(torch.nn.Module, "cuda"):
         torch.nn.Module.cuda = _wrap_module_cuda(torch.nn.Module.cuda)
 
     # Patch tensor factory functions
@@ -668,4 +699,3 @@ def is_patched() -> bool:
 def get_original_init_process_group():
     """Get the original torch.distributed.init_process_group function."""
     return _original_init_process_group
-

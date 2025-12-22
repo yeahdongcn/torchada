@@ -23,7 +23,6 @@ _MAPPING_RULE = {
     "ATen/cuda": "ATen/musa",
     "ATen/CUDAContext.h": "ATen/musa/MUSAContext.h",
     "ATen/CUDAGeneratorImpl.h": "ATen/musa/MUSAGeneratorImpl.h",
-
     # C10 CUDA -> MUSA
     "c10::cuda::getCurrentCUDAStream": "c10::musa::getCurrentMUSAStream",
     "c10::cuda::getDefaultCUDAStream": "c10::musa::getDefaultMUSAStream",
@@ -32,14 +31,12 @@ _MAPPING_RULE = {
     "c10::cuda::": "c10::musa::",
     "c10/cuda": "c10/musa",
     "<c10/cuda/CUDAStream.h>": '"torch_musa/csrc/core/MUSAStream.h"',
-
     # CUDA namespaces and paths
     "torch::cuda": "torch::musa",
     "torch.cuda": "torch.musa",
     "at::kCUDA": "at::kMUSA",
     "at::DeviceType::CUDA": "at::DeviceType::MUSA",
     "c10::DeviceType::CUDA": "c10::DeviceType::MUSA",
-
     # cuBLAS -> muBLAS
     "cublas": "mublas",
     "CUBLAS": "MUBLAS",
@@ -59,7 +56,6 @@ _MAPPING_RULE = {
     "cublasDgemmBatched": "mublasDgemmBatched",
     "cublasSgemmStridedBatched": "mublasSgemmStridedBatched",
     "cublasDgemmStridedBatched": "mublasDgemmStridedBatched",
-
     # cuRAND -> muRAND
     "curand": "murand",
     "CURAND": "MURAND",
@@ -70,14 +66,12 @@ _MAPPING_RULE = {
     "curand_uniform4": "murand_uniform4",
     "curand_normal": "murand_normal",
     "curand_normal4": "murand_normal4",
-
     # cuDNN -> muDNN
     "cudnn": "mudnn",
     "CUDNN": "MUDNN",
     "cudnnHandle_t": "mudnnHandle_t",
     "cudnnCreate": "mudnnCreate",
     "cudnnDestroy": "mudnnDestroy",
-
     # CUDA Runtime
     "cudaMalloc": "musaMalloc",
     "cudaFree": "musaFree",
@@ -92,7 +86,6 @@ _MAPPING_RULE = {
     "cudaGetDeviceCount": "musaGetDeviceCount",
     "cudaGetDeviceProperties": "musaGetDeviceProperties",
     "cudaDeviceGetAttribute": "musaDeviceGetAttribute",
-
     # CUDA Stream/Event
     "cudaStream_t": "musaStream_t",
     "cudaEvent_t": "musaEvent_t",
@@ -104,39 +97,32 @@ _MAPPING_RULE = {
     "cudaEventSynchronize": "musaEventSynchronize",
     "cudaEventElapsedTime": "musaEventElapsedTime",
     "cudaStreamWaitEvent": "musaStreamWaitEvent",
-
     # CUDA Error handling
     "cudaError_t": "musaError_t",
     "cudaSuccess": "musaSuccess",
     "cudaGetLastError": "musaGetLastError",
     "cudaGetErrorString": "musaGetErrorString",
     "cudaPeekAtLastError": "musaPeekAtLastError",
-
     # CUDA Memory types
     "cudaMemcpyHostToDevice": "musaMemcpyHostToDevice",
     "cudaMemcpyDeviceToHost": "musaMemcpyDeviceToHost",
     "cudaMemcpyDeviceToDevice": "musaMemcpyDeviceToDevice",
     "cudaMemcpyHostToHost": "musaMemcpyHostToHost",
-
     # Data types
     "__half": "__half",  # Keep as-is, MUSA supports __half
     "half": "half",
     "__nv_bfloat16": "__mt_bfloat16",
     "nv_bfloat16": "mt_bfloat16",
-
     # Cutlass -> Mutlass
     "cutlass": "mutlass",
     "CUTLASS": "MUTLASS",
     "cutlass/": "mutlass/",
     "cutlass::": "mutlass::",
-
     # CUB -> MUB (CUDA Unbound)
     "cub::": "mub::",
     "cub/": "mub/",
-
     # Thrust
     "thrust::cuda": "thrust::musa",
-
     # NCCL -> MCCL
     "nccl": "mccl",
     "NCCL": "MCCL",
@@ -145,21 +131,18 @@ _MAPPING_RULE = {
     "ncclRedOp_t": "mcclRedOp_t",
     "ncclResult_t": "mcclResult_t",
     "ncclSuccess": "mcclSuccess",
-
     # cuSPARSE -> muSPARSE
     "cusparse": "musparse",
     "CUSPARSE": "MUSPARSE",
     "cusparseHandle_t": "musparseHandle_t",
     "cusparseCreate": "musparseCreate",
     "cusparseDestroy": "musparseDestroy",
-
     # cuSOLVER -> muSOLVER
     "cusolver": "musolver",
     "CUSOLVER": "MUSOLVER",
     "cusolverDnHandle_t": "musolverDnHandle_t",
     "cusolverDnCreate": "musolverDnCreate",
     "cusolverDnDestroy": "musolverDnDestroy",
-
     # cuFFT -> muFFT
     "cufft": "mufft",
     "CUFFT": "MUFFT",
@@ -170,11 +153,9 @@ _MAPPING_RULE = {
     "cufftExecC2C": "mufftExecC2C",
     "cufftExecR2C": "mufftExecR2C",
     "cufftExecC2R": "mufftExecC2R",
-
     # CUDA kernel launch syntax
     "<<<": "<<<",  # Keep as-is, MUSA uses same syntax
     ">>>": ">>>",
-
     # CUDA device attributes
     "cudaDevAttrMaxThreadsPerBlock": "musaDevAttrMaxThreadsPerBlock",
     "cudaDevAttrMaxBlockDimX": "musaDevAttrMaxBlockDimX",
@@ -186,7 +167,6 @@ _MAPPING_RULE = {
     "cudaDevAttrMaxSharedMemoryPerBlock": "musaDevAttrMaxSharedMemoryPerBlock",
     "cudaDevAttrWarpSize": "musaDevAttrWarpSize",
     "cudaDevAttrMultiProcessorCount": "musaDevAttrMultiProcessorCount",
-
     # Additional PyTorch CUDA utilities
     "getCurrentCUDAStream": "getCurrentMUSAStream",
     "getDefaultCUDAStream": "getDefaultMUSAStream",
@@ -195,14 +175,12 @@ _MAPPING_RULE = {
     "OptionalCUDAGuard": "OptionalMUSAGuard",
     "CUDAStreamGuard": "MUSAStreamGuard",
     "CUDAEvent": "MUSAEvent",
-
     # CUDA includes to MUSA
     "cuda_runtime.h": "musa_runtime.h",
     "cuda_runtime_api.h": "musa_runtime_api.h",
     "cuda.h": "musa.h",
     "cuda_fp16.h": "musa_fp16.h",
     "cuda_bf16.h": "musa_bf16.h",
-
     # Additional CUDA runtime functions
     "cudaHostAlloc": "musaHostAlloc",
     "cudaHostFree": "musaHostFree",
@@ -218,7 +196,6 @@ _MAPPING_RULE = {
     "cudaMemGetInfo": "musaMemGetInfo",
     "cudaMemPrefetchAsync": "musaMemPrefetchAsync",
     "cudaPointerGetAttributes": "musaPointerGetAttributes",
-
     # CUDA stream flags and types
     "cudaStreamDefault": "musaStreamDefault",
     "cudaStreamNonBlocking": "musaStreamNonBlocking",
@@ -227,14 +204,12 @@ _MAPPING_RULE = {
     "cudaStreamQuery": "musaStreamQuery",
     "cudaStreamGetPriority": "musaStreamGetPriority",
     "cudaStreamGetFlags": "musaStreamGetFlags",
-
     # CUDA event flags
     "cudaEventDefault": "musaEventDefault",
     "cudaEventBlockingSync": "musaEventBlockingSync",
     "cudaEventDisableTiming": "musaEventDisableTiming",
     "cudaEventCreateWithFlags": "musaEventCreateWithFlags",
     "cudaEventQuery": "musaEventQuery",
-
     # CUDA memory flags
     "cudaHostAllocDefault": "musaHostAllocDefault",
     "cudaHostAllocPortable": "musaHostAllocPortable",
@@ -243,7 +218,6 @@ _MAPPING_RULE = {
     "cudaMemoryTypeHost": "musaMemoryTypeHost",
     "cudaMemoryTypeDevice": "musaMemoryTypeDevice",
     "cudaMemoryTypeManaged": "musaMemoryTypeManaged",
-
     # Device management
     "cudaDeviceReset": "musaDeviceReset",
     "cudaDeviceSetCacheConfig": "musaDeviceSetCacheConfig",
@@ -255,18 +229,15 @@ _MAPPING_RULE = {
     "cudaDeviceCanAccessPeer": "musaDeviceCanAccessPeer",
     "cudaDeviceEnablePeerAccess": "musaDeviceEnablePeerAccess",
     "cudaDeviceDisablePeerAccess": "musaDeviceDisablePeerAccess",
-
     # CUDA occupancy
     "cudaOccupancyMaxActiveBlocksPerMultiprocessor": "musaOccupancyMaxActiveBlocksPerMultiprocessor",
     "cudaOccupancyMaxPotentialBlockSize": "musaOccupancyMaxPotentialBlockSize",
-
     # Additional device properties
     "cudaDeviceProp": "musaDeviceProp",
     "cudaFuncAttributes": "musaFuncAttributes",
     "cudaFuncGetAttributes": "musaFuncGetAttributes",
     "cudaFuncSetAttribute": "musaFuncSetAttribute",
     "cudaFuncSetCacheConfig": "musaFuncSetCacheConfig",
-
     # CUDA texture/surface (if supported)
     "cudaTextureObject_t": "musaTextureObject_t",
     "cudaSurfaceObject_t": "musaSurfaceObject_t",
@@ -274,10 +245,8 @@ _MAPPING_RULE = {
     "cudaDestroyTextureObject": "musaDestroyTextureObject",
     "cudaCreateSurfaceObject": "musaCreateSurfaceObject",
     "cudaDestroySurfaceObject": "musaDestroySurfaceObject",
-
     # CUDA cooperative groups (if supported)
     "cooperative_groups": "cooperative_groups",
-
     # Additional cuBLAS functions
     "cublasSetMathMode": "mublasSetMathMode",
     "cublasGetMathMode": "mublasGetMathMode",
@@ -287,7 +256,6 @@ _MAPPING_RULE = {
     "cublasLtDestroy": "mublasLtDestroy",
     "cublasLtHandle_t": "mublasLtHandle_t",
     "cublasLtMatmul": "mublasLtMatmul",
-
     # Additional cuDNN functions
     "cudnnStatus_t": "mudnnStatus_t",
     "cudnnSetStream": "mudnnSetStream",
@@ -303,16 +271,13 @@ _MAPPING_RULE = {
     "cudnnDestroyTensorDescriptor": "mudnnDestroyTensorDescriptor",
     "cudnnSetTensor4dDescriptor": "mudnnSetTensor4dDescriptor",
     "cudnnSetTensorNdDescriptor": "mudnnSetTensorNdDescriptor",
-
     # Flash attention and transformer related (common in vLLM/SGLang)
     "flash_attn": "flash_attn",  # Usually kept as-is
     "FlashAttnFunc": "FlashAttnFunc",
     "FlashAttnQKVPackedFunc": "FlashAttnQKVPackedFunc",
-
     # Paged attention (vLLM specific)
     "paged_attention_v1": "paged_attention_v1",
     "paged_attention_v2": "paged_attention_v2",
-
     # Additional NCCL functions
     "ncclCommInitRank": "mcclCommInitRank",
     "ncclCommInitAll": "mcclCommInitAll",
@@ -331,7 +296,6 @@ _MAPPING_RULE = {
     "ncclRecv": "mcclRecv",
     "ncclGetUniqueId": "mcclGetUniqueId",
     "ncclUniqueId": "mcclUniqueId",
-
     # CUDA math intrinsics
     "__shfl_sync": "__shfl_sync",  # Usually same syntax
     "__shfl_xor_sync": "__shfl_xor_sync",
@@ -345,7 +309,6 @@ _MAPPING_RULE = {
     "__threadfence": "__threadfence",
     "__threadfence_block": "__threadfence_block",
     "__threadfence_system": "__threadfence_system",
-
     # Atomic operations
     "atomicAdd": "atomicAdd",
     "atomicSub": "atomicSub",
@@ -358,7 +321,6 @@ _MAPPING_RULE = {
     "atomicAnd": "atomicAnd",
     "atomicOr": "atomicOr",
     "atomicXor": "atomicXor",
-
     # CUDA math functions
     "__float2half": "__float2half",
     "__half2float": "__half2float",
@@ -374,7 +336,6 @@ _MAPPING_RULE = {
     "__hsub2": "__hsub2",
     "__hmul2": "__hmul2",
     "__hfma2": "__hfma2",
-
     # Common macros
     "CUDA_KERNEL_LOOP": "MUSA_KERNEL_LOOP",
     "CUDA_1D_KERNEL_LOOP": "MUSA_1D_KERNEL_LOOP",
@@ -382,15 +343,12 @@ _MAPPING_RULE = {
     "CUDA_NUM_THREADS": "MUSA_NUM_THREADS",
     "GET_BLOCKS": "GET_BLOCKS",
     "DIVUP": "DIVUP",
-
     # PyTorch C++ API cuda utilities
     "torch::cuda::getCurrentCUDAStream": "torch::musa::getCurrentMUSAStream",
     "torch::cuda::getDefaultCUDAStream": "torch::musa::getDefaultMUSAStream",
     "torch::cuda::getStreamFromPool": "torch::musa::getStreamFromPool",
     "torch::kCUDA": "torch::kMUSA",
-
     # Device index utilities
     "cudaDeviceIndex": "musaDeviceIndex",
     "CUDADeviceIndex": "MUSADeviceIndex",
 }
-

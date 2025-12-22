@@ -12,6 +12,7 @@ from typing import Optional
 
 class Platform(Enum):
     """Supported GPU platforms."""
+
     CUDA = "cuda"
     MUSA = "musa"
     CPU = "cpu"
@@ -21,13 +22,13 @@ class Platform(Enum):
 def detect_platform() -> Platform:
     """
     Detect the current GPU platform.
-    
+
     Priority:
     1. TORCHADA_PLATFORM environment variable (force specific platform)
     2. MUSA availability (Moore Threads GPU)
     3. CUDA availability (NVIDIA GPU)
     4. CPU fallback
-    
+
     Returns:
         Platform: The detected or configured platform.
     """
@@ -39,16 +40,16 @@ def detect_platform() -> Platform:
         return Platform.MUSA
     elif forced_platform == "cpu":
         return Platform.CPU
-    
+
     # Auto-detect platform
     # Check MUSA first (Moore Threads)
     if _is_musa_available():
         return Platform.MUSA
-    
+
     # Check CUDA (NVIDIA)
     if _is_cuda_available():
         return Platform.CUDA
-    
+
     # Fallback to CPU
     return Platform.CPU
 
@@ -56,8 +57,9 @@ def detect_platform() -> Platform:
 def _is_musa_available() -> bool:
     """Check if MUSA (Moore Threads) is available."""
     try:
-        import torch_musa
         import torch
+        import torch_musa
+
         return torch.musa.is_available()
     except (ImportError, AttributeError):
         return False
@@ -67,6 +69,7 @@ def _is_cuda_available() -> bool:
     """Check if CUDA (NVIDIA) is available."""
     try:
         import torch
+
         return torch.cuda.is_available()
     except (ImportError, AttributeError):
         return False
@@ -95,22 +98,23 @@ def get_device_name() -> str:
 def get_torch_device_module():
     """
     Get the appropriate torch device module (torch.cuda or torch.musa).
-    
+
     Returns:
         The torch.cuda or torch.musa module.
-    
+
     Raises:
         RuntimeError: If no GPU platform is available.
     """
     platform = detect_platform()
-    
+
     if platform == Platform.MUSA:
-        import torch_musa
         import torch
+        import torch_musa
+
         return torch.musa
     elif platform == Platform.CUDA:
         import torch
+
         return torch.cuda
     else:
         raise RuntimeError("No GPU platform available. Running on CPU only.")
-

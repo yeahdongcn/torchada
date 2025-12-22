@@ -6,10 +6,11 @@ work correctly:
     from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 """
 
-import pytest
 import os
-import tempfile
 import shutil
+import tempfile
+
+import pytest
 
 # Import torchada first to apply patches
 import torchada  # noqa: F401
@@ -21,17 +22,20 @@ class TestCppExtensionImports:
     def test_import_cuda_home(self):
         """Test CUDA_HOME can be imported from torch.utils.cpp_extension."""
         from torch.utils.cpp_extension import CUDA_HOME
+
         # CUDA_HOME should be a string or None
         assert CUDA_HOME is None or isinstance(CUDA_HOME, str)
 
     def test_import_cuda_extension(self):
         """Test CUDAExtension can be imported from torch.utils.cpp_extension."""
         from torch.utils.cpp_extension import CUDAExtension
+
         assert CUDAExtension is not None
 
     def test_import_build_extension(self):
         """Test BuildExtension can be imported from torch.utils.cpp_extension."""
         from torch.utils.cpp_extension import BuildExtension
+
         assert BuildExtension is not None
 
     def test_cuda_home_on_musa(self):
@@ -40,7 +44,9 @@ class TestCppExtensionImports:
 
         if torchada.is_musa_platform() and CUDA_HOME is not None:
             # On MUSA platform, CUDA_HOME should point to MUSA installation
-            assert "musa" in CUDA_HOME.lower() or os.path.exists(os.path.join(CUDA_HOME, "bin", "mcc"))
+            assert "musa" in CUDA_HOME.lower() or os.path.exists(
+                os.path.join(CUDA_HOME, "bin", "mcc")
+            )
 
     def test_torch_cpp_extension_is_patched(self):
         """Test that torch.utils.cpp_extension is patched correctly on MUSA."""
@@ -48,11 +54,14 @@ class TestCppExtensionImports:
 
         if torchada.is_musa_platform():
             # Verify CUDAExtension is our patched version
-            assert torch_cpp_ext.CUDAExtension.__module__ == "torchada.utils.cpp_extension"
+            assert (
+                torch_cpp_ext.CUDAExtension.__module__ == "torchada.utils.cpp_extension"
+            )
 
     def test_torch_cpp_extension_cuda_home_same_as_torchada(self):
         """Test that torch.utils.cpp_extension.CUDA_HOME matches torchada's."""
         import torch.utils.cpp_extension as torch_cpp_ext
+
         from torchada.utils.cpp_extension import CUDA_HOME as torchada_cuda_home
 
         if torchada.is_musa_platform():
@@ -105,6 +114,7 @@ class TestMusaPatches:
 
         if torchada.is_musa_platform():
             import torch_musa.utils.musa_extension as musa_ext
+
             assert musa_ext._is_musa_file("test.cu")
             assert musa_ext._is_musa_file("path/to/kernel.cu")
 
@@ -114,6 +124,7 @@ class TestMusaPatches:
 
         if torchada.is_musa_platform():
             import torch_musa.utils.musa_extension as musa_ext
+
             assert musa_ext._is_musa_file("test.cuh")
             assert musa_ext._is_musa_file("path/to/header.cuh")
 
@@ -123,6 +134,7 @@ class TestMusaPatches:
 
         if torchada.is_musa_platform():
             import torch_musa.utils.musa_extension as musa_ext
+
             assert musa_ext._is_musa_file("test.mu")
 
     def test_ext_replaced_mapping(self):
@@ -131,6 +143,7 @@ class TestMusaPatches:
 
         if torchada.is_musa_platform():
             import torch_musa.utils.simple_porting as musa_sp
+
             # Extensions are converted: .cu -> .mu, .cuh -> .muh for mcc compiler
             assert musa_sp.EXT_REPLACED_MAPPING["cu"] == "mu"
             assert musa_sp.EXT_REPLACED_MAPPING["cuh"] == "muh"
@@ -141,6 +154,7 @@ class TestMusaPatches:
 
         if torchada.is_musa_platform():
             import torch_musa.utils.simple_porting as musa_sp
+
             assert hasattr(musa_sp, "_MAPPING_RULE")
             assert len(musa_sp._MAPPING_RULE) > 0
 
@@ -150,6 +164,7 @@ class TestMusaPatches:
 
         if torchada.is_musa_platform():
             import torch_musa.utils.simple_porting as musa_sp
+
             rules = musa_sp._MAPPING_RULE
 
             # Check some key mappings
@@ -158,4 +173,3 @@ class TestMusaPatches:
             assert rules.get("cudaStream_t") == "musaStream_t"
             assert rules.get("at::cuda") == "at::musa"
             assert rules.get("c10::cuda") == "c10::musa"
-

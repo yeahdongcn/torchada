@@ -2,9 +2,10 @@
 Pytest configuration and fixtures for torchada tests.
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Ensure torchada is imported first to apply patches
 import torchada
@@ -12,18 +13,12 @@ import torchada
 
 def pytest_configure(config):
     """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "musa: mark test as requiring MUSA platform"
-    )
-    config.addinivalue_line(
-        "markers", "cuda: mark test as requiring CUDA platform"
-    )
+    config.addinivalue_line("markers", "musa: mark test as requiring MUSA platform")
+    config.addinivalue_line("markers", "cuda: mark test as requiring CUDA platform")
     config.addinivalue_line(
         "markers", "gpu: mark test as requiring any GPU (CUDA or MUSA)"
     )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow"
-    )
+    config.addinivalue_line("markers", "slow: mark test as slow")
 
 
 @pytest.fixture(scope="session")
@@ -48,6 +43,7 @@ def is_cuda():
 def has_gpu():
     """Return True if any GPU is available."""
     import torch
+
     return torch.cuda.is_available()
 
 
@@ -55,6 +51,7 @@ def has_gpu():
 def gpu_tensor():
     """Create a GPU tensor fixture."""
     import torch
+
     if torch.cuda.is_available():
         return torch.randn(10, 10, device="cuda")
     else:
@@ -65,6 +62,7 @@ def gpu_tensor():
 def cpu_tensor():
     """Create a CPU tensor fixture."""
     import torch
+
     return torch.randn(10, 10)
 
 
@@ -83,4 +81,3 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_cuda)
         if "gpu" in item.keywords and not torch.cuda.is_available():
             item.add_marker(skip_gpu)
-

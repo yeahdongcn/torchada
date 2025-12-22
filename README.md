@@ -11,6 +11,10 @@ torchada provides a unified interface that works transparently on both NVIDIA GP
 - **Transparent Device Mapping**: `tensor.cuda()` and `tensor.to("cuda")` work on MUSA
 - **Extension Building**: Standard `torch.utils.cpp_extension` works on MUSA after importing torchada
 - **Source Code Porting**: Automatic CUDA → MUSA symbol mapping for C++/CUDA extensions
+- **Distributed Training**: `torch.distributed` with 'nccl' backend automatically uses 'mccl' on MUSA
+- **Mixed Precision**: `torch.cuda.amp` autocast and GradScaler work transparently
+- **CUDA Graphs**: `torch.cuda.CUDAGraph` maps to `MUSAGraph` on MUSA
+- **Inductor Support**: `torch._inductor` autotune uses `MUSA_VISIBLE_DEVICES` on MUSA
 
 ## Installation
 
@@ -31,10 +35,11 @@ pip install -e .
 import torchada  # Import once to apply patches - that's it!
 import torch
 
-# Use standard torch.cuda APIs - they work on both CUDA and MUSA:
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-    tensor = torch.randn(10, 10).cuda()
+# Check for GPU availability (works on both CUDA and MUSA)
+if torchada.is_musa_platform() or torch.cuda.is_available():
+    # Use standard torch.cuda APIs - they work transparently on MUSA:
+    device = torch.device("cuda")  # Creates musa device on MUSA platform
+    tensor = torch.randn(10, 10).cuda()  # Moves to MUSA on MUSA platform
     model = MyModel().cuda()
 
     # All torch.cuda.* APIs work transparently
@@ -156,13 +161,22 @@ if torchada.is_musa_platform():
 
 After `import torchada`, the following standard PyTorch APIs work on MUSA:
 
-| Standard Import | Works On MUSA |
-|----------------|---------------|
-| `torch.cuda.*` | ✅ All APIs |
-| `torch.cuda.amp.*` | ✅ autocast, GradScaler |
-| `torch.cuda.CUDAGraph` | ✅ Maps to MUSAGraph |
-| `torch.distributed` (backend='nccl') | ✅ Uses MCCL |
-| `torch.utils.cpp_extension.*` | ✅ CUDAExtension, BuildExtension |
+| Standard API | Description |
+|--------------|-------------|
+| `torch.cuda.*` | All APIs redirected to `torch.musa` |
+| `torch.cuda.amp.*` | autocast, GradScaler |
+| `torch.cuda.CUDAGraph` | Maps to MUSAGraph |
+| `torch.cuda.nccl` | Maps to `torch.musa.mccl` |
+| `torch.cuda.nvtx` | No-op stub (MUSA doesn't have nvtx) |
+| `torch.cuda._lazy_call` | Patched for lazy initialization |
+| `torch.distributed` (backend='nccl') | Automatically uses MCCL |
+| `torch.device("cuda")` | Creates MUSA device on MUSA platform |
+| `tensor.cuda()` | Moves to MUSA device |
+| `tensor.is_cuda` | Returns True for MUSA tensors |
+| `model.cuda()` | Moves model to MUSA device |
+| `torch.amp.autocast(device_type='cuda')` | Uses 'musa' device type |
+| `torch.utils.cpp_extension.*` | CUDAExtension, BuildExtension, CUDA_HOME |
+| `torch._inductor.autotune_process` | Uses MUSA_VISIBLE_DEVICES |
 
 ## API Reference
 
@@ -173,15 +187,24 @@ After `import torchada`, the following standard PyTorch APIs work on MUSA:
 | `detect_platform()` | Returns the detected platform (CUDA, MUSA, or CPU) |
 | `is_musa_platform()` | Check if running on MUSA |
 | `is_cuda_platform()` | Check if running on CUDA |
+| `is_cpu_platform()` | Check if running on CPU only |
 | `get_device_name()` | Get device name string ("cuda", "musa", or "cpu") |
+| `get_platform()` | Alias for `detect_platform()` |
+| `get_backend()` | Get the underlying torch device module |
+| `is_patched()` | Check if patches have been applied |
+| `get_version()` | Get torchada version string |
+| `CUDA_HOME` | Path to CUDA/MUSA installation |
 
 ### torch.cuda (after importing torchada)
 
 All standard `torch.cuda` APIs work, including:
-- `is_available()`, `device_count()`, `current_device()`, `set_device()`
-- `memory_allocated()`, `memory_reserved()`, `empty_cache()`
+- `device_count()`, `current_device()`, `set_device()`, `get_device_name()`
+- `memory_allocated()`, `memory_reserved()`, `empty_cache()`, `reset_peak_memory_stats()`
 - `synchronize()`, `Stream`, `Event`, `CUDAGraph`
 - `amp.autocast()`, `amp.GradScaler()`
+- `_lazy_call()`, `_lazy_init()`
+
+**Note**: `torch.cuda.is_available()` is intentionally NOT redirected. It returns `False` on MUSA to allow proper platform detection. Use `torch.musa.is_available()` or `torchada.is_musa_platform()` instead.
 
 ### torch.utils.cpp_extension (after importing torchada)
 
@@ -206,9 +229,27 @@ torchada automatically maps CUDA symbols to MUSA equivalents when building exten
 | `curandState` | `murandState` |
 | `at::cuda` | `at::musa` |
 | `c10::cuda` | `c10::musa` |
+| `cutlass::*` | `mutlass::*` |
+| `#include <cuda/*>` | `#include <musa/*>` |
 | ... | ... |
 
-See `src/torchada/_mapping.py` for the complete mapping table.
+See `src/torchada/_mapping.py` for the complete mapping table (350+ mappings).
+
+## Architecture
+
+torchada uses a decorator-based patch registration system:
+
+```python
+from torchada._patch import patch_function, requires_import
+
+@patch_function  # Registers for automatic application
+@requires_import('torch_musa')  # Guards against missing dependencies
+def _patch_my_feature():
+    # Patching logic here
+    pass
+```
+
+All registered patches are applied automatically when you `import torchada`.
 
 ## License
 

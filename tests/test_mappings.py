@@ -11,12 +11,14 @@ class TestMappingImports:
     def test_import_mapping_rule(self):
         """Test _MAPPING_RULE can be imported."""
         from torchada._mapping import _MAPPING_RULE
+
         assert isinstance(_MAPPING_RULE, dict)
         assert len(_MAPPING_RULE) > 0
 
     def test_import_ext_replaced_mapping(self):
         """Test EXT_REPLACED_MAPPING can be imported."""
         from torchada._mapping import EXT_REPLACED_MAPPING
+
         assert isinstance(EXT_REPLACED_MAPPING, dict)
 
 
@@ -25,14 +27,18 @@ class TestATenMappings:
 
     def test_aten_cuda_namespace(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["at::cuda"] == "at::musa"
         assert _MAPPING_RULE["at::cuda::"] == "at::musa::"
 
     def test_aten_cuda_includes(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["ATen/cuda"] == "ATen/musa"
         assert _MAPPING_RULE["ATen/CUDAContext.h"] == "ATen/musa/MUSAContext.h"
-        assert _MAPPING_RULE["ATen/CUDAGeneratorImpl.h"] == "ATen/musa/MUSAGeneratorImpl.h"
+        assert (
+            _MAPPING_RULE["ATen/CUDAGeneratorImpl.h"] == "ATen/musa/MUSAGeneratorImpl.h"
+        )
 
 
 class TestC10Mappings:
@@ -40,12 +46,14 @@ class TestC10Mappings:
 
     def test_c10_cuda_namespace(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["c10::cuda"] == "c10::musa"
         assert _MAPPING_RULE["c10::cuda::"] == "c10::musa::"
         assert _MAPPING_RULE["c10/cuda"] == "c10/musa"
 
     def test_c10_device_type(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["c10::DeviceType::CUDA"] == "c10::DeviceType::MUSA"
 
 
@@ -54,11 +62,13 @@ class TestTorchMappings:
 
     def test_torch_cuda_namespace(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["torch::cuda"] == "torch::musa"
         assert _MAPPING_RULE["torch.cuda"] == "torch.musa"
 
     def test_torch_device_type(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["at::kCUDA"] == "at::kMUSA"
         assert _MAPPING_RULE["at::DeviceType::CUDA"] == "at::DeviceType::MUSA"
         assert _MAPPING_RULE["torch::kCUDA"] == "torch::kMUSA"
@@ -69,16 +79,19 @@ class TestCuBLASMappings:
 
     def test_cublas_basic(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cublas"] == "mublas"
         assert _MAPPING_RULE["CUBLAS"] == "MUBLAS"
 
     def test_cublas_types(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cublasHandle_t"] == "mublasHandle_t"
         assert _MAPPING_RULE["cublasStatus_t"] == "mublasStatus_t"
 
     def test_cublas_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cublasCreate"] == "mublasCreate"
         assert _MAPPING_RULE["cublasDestroy"] == "mublasDestroy"
         assert _MAPPING_RULE["cublasSetStream"] == "mublasSetStream"
@@ -86,6 +99,7 @@ class TestCuBLASMappings:
 
     def test_cublas_gemm(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cublasSgemm"] == "mublasSgemm"
         assert _MAPPING_RULE["cublasDgemm"] == "mublasDgemm"
         assert _MAPPING_RULE["cublasHgemm"] == "mublasHgemm"
@@ -93,13 +107,17 @@ class TestCuBLASMappings:
 
     def test_cublas_batched(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cublasGemmBatchedEx"] == "mublasGemmBatchedEx"
-        assert _MAPPING_RULE["cublasGemmStridedBatchedEx"] == "mublasGemmStridedBatchedEx"
+        assert (
+            _MAPPING_RULE["cublasGemmStridedBatchedEx"] == "mublasGemmStridedBatchedEx"
+        )
         assert _MAPPING_RULE["cublasSgemmBatched"] == "mublasSgemmBatched"
         assert _MAPPING_RULE["cublasDgemmBatched"] == "mublasDgemmBatched"
 
     def test_cublaslt(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cublasLtCreate"] == "mublasLtCreate"
         assert _MAPPING_RULE["cublasLtDestroy"] == "mublasLtDestroy"
         assert _MAPPING_RULE["cublasLtHandle_t"] == "mublasLtHandle_t"
@@ -111,16 +129,21 @@ class TestCuRANDMappings:
 
     def test_curand_basic(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["curand"] == "murand"
         assert _MAPPING_RULE["CURAND"] == "MURAND"
 
     def test_curand_types(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["curandState"] == "murandState"
-        assert _MAPPING_RULE["curandStatePhilox4_32_10_t"] == "murandStatePhilox4_32_10_t"
+        assert (
+            _MAPPING_RULE["curandStatePhilox4_32_10_t"] == "murandStatePhilox4_32_10_t"
+        )
 
     def test_curand_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["curand_init"] == "murand_init"
         assert _MAPPING_RULE["curand_uniform"] == "murand_uniform"
         assert _MAPPING_RULE["curand_uniform4"] == "murand_uniform4"
@@ -133,16 +156,19 @@ class TestCuDNNMappings:
 
     def test_cudnn_basic(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudnn"] == "mudnn"
         assert _MAPPING_RULE["CUDNN"] == "MUDNN"
 
     def test_cudnn_types(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudnnHandle_t"] == "mudnnHandle_t"
         assert _MAPPING_RULE["cudnnStatus_t"] == "mudnnStatus_t"
 
     def test_cudnn_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudnnCreate"] == "mudnnCreate"
         assert _MAPPING_RULE["cudnnDestroy"] == "mudnnDestroy"
         assert _MAPPING_RULE["cudnnSetStream"] == "mudnnSetStream"
@@ -153,6 +179,7 @@ class TestCUDARuntimeMappings:
 
     def test_memory_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaMalloc"] == "musaMalloc"
         assert _MAPPING_RULE["cudaFree"] == "musaFree"
         assert _MAPPING_RULE["cudaMemcpy"] == "musaMemcpy"
@@ -162,6 +189,7 @@ class TestCUDARuntimeMappings:
 
     def test_host_memory_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaHostAlloc"] == "musaHostAlloc"
         assert _MAPPING_RULE["cudaHostFree"] == "musaHostFree"
         assert _MAPPING_RULE["cudaMallocHost"] == "musaMallocHost"
@@ -170,6 +198,7 @@ class TestCUDARuntimeMappings:
 
     def test_async_memory_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaMallocAsync"] == "musaMallocAsync"
         assert _MAPPING_RULE["cudaFreeAsync"] == "musaFreeAsync"
         assert _MAPPING_RULE["cudaMemcpy2D"] == "musaMemcpy2D"
@@ -179,6 +208,7 @@ class TestCUDARuntimeMappings:
 
     def test_device_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaDeviceSynchronize"] == "musaDeviceSynchronize"
         assert _MAPPING_RULE["cudaGetDevice"] == "musaGetDevice"
         assert _MAPPING_RULE["cudaSetDevice"] == "musaSetDevice"
@@ -188,6 +218,7 @@ class TestCUDARuntimeMappings:
 
     def test_memcpy_kinds(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaMemcpyHostToDevice"] == "musaMemcpyHostToDevice"
         assert _MAPPING_RULE["cudaMemcpyDeviceToHost"] == "musaMemcpyDeviceToHost"
         assert _MAPPING_RULE["cudaMemcpyDeviceToDevice"] == "musaMemcpyDeviceToDevice"
@@ -199,11 +230,13 @@ class TestStreamEventMappings:
 
     def test_stream_types(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaStream_t"] == "musaStream_t"
         assert _MAPPING_RULE["cudaEvent_t"] == "musaEvent_t"
 
     def test_stream_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaStreamCreate"] == "musaStreamCreate"
         assert _MAPPING_RULE["cudaStreamDestroy"] == "musaStreamDestroy"
         assert _MAPPING_RULE["cudaStreamSynchronize"] == "musaStreamSynchronize"
@@ -212,13 +245,18 @@ class TestStreamEventMappings:
 
     def test_stream_flags(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaStreamDefault"] == "musaStreamDefault"
         assert _MAPPING_RULE["cudaStreamNonBlocking"] == "musaStreamNonBlocking"
         assert _MAPPING_RULE["cudaStreamCreateWithFlags"] == "musaStreamCreateWithFlags"
-        assert _MAPPING_RULE["cudaStreamCreateWithPriority"] == "musaStreamCreateWithPriority"
+        assert (
+            _MAPPING_RULE["cudaStreamCreateWithPriority"]
+            == "musaStreamCreateWithPriority"
+        )
 
     def test_event_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaEventCreate"] == "musaEventCreate"
         assert _MAPPING_RULE["cudaEventDestroy"] == "musaEventDestroy"
         assert _MAPPING_RULE["cudaEventRecord"] == "musaEventRecord"
@@ -228,6 +266,7 @@ class TestStreamEventMappings:
 
     def test_event_flags(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaEventDefault"] == "musaEventDefault"
         assert _MAPPING_RULE["cudaEventBlockingSync"] == "musaEventBlockingSync"
         assert _MAPPING_RULE["cudaEventDisableTiming"] == "musaEventDisableTiming"
@@ -239,11 +278,13 @@ class TestErrorHandlingMappings:
 
     def test_error_types(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaError_t"] == "musaError_t"
         assert _MAPPING_RULE["cudaSuccess"] == "musaSuccess"
 
     def test_error_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cudaGetLastError"] == "musaGetLastError"
         assert _MAPPING_RULE["cudaGetErrorString"] == "musaGetErrorString"
         assert _MAPPING_RULE["cudaPeekAtLastError"] == "musaPeekAtLastError"
@@ -254,11 +295,13 @@ class TestNCCLMappings:
 
     def test_nccl_basic(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["nccl"] == "mccl"
         assert _MAPPING_RULE["NCCL"] == "MCCL"
 
     def test_nccl_types(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["ncclComm_t"] == "mcclComm_t"
         assert _MAPPING_RULE["ncclDataType_t"] == "mcclDataType_t"
         assert _MAPPING_RULE["ncclRedOp_t"] == "mcclRedOp_t"
@@ -268,6 +311,7 @@ class TestNCCLMappings:
 
     def test_nccl_comm_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["ncclCommInitRank"] == "mcclCommInitRank"
         assert _MAPPING_RULE["ncclCommInitAll"] == "mcclCommInitAll"
         assert _MAPPING_RULE["ncclCommDestroy"] == "mcclCommDestroy"
@@ -278,6 +322,7 @@ class TestNCCLMappings:
 
     def test_nccl_collective_functions(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["ncclAllReduce"] == "mcclAllReduce"
         assert _MAPPING_RULE["ncclBroadcast"] == "mcclBroadcast"
         assert _MAPPING_RULE["ncclReduce"] == "mcclReduce"
@@ -294,6 +339,7 @@ class TestLibraryMappings:
 
     def test_cusparse(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cusparse"] == "musparse"
         assert _MAPPING_RULE["CUSPARSE"] == "MUSPARSE"
         assert _MAPPING_RULE["cusparseHandle_t"] == "musparseHandle_t"
@@ -302,6 +348,7 @@ class TestLibraryMappings:
 
     def test_cusolver(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cusolver"] == "musolver"
         assert _MAPPING_RULE["CUSOLVER"] == "MUSOLVER"
         assert _MAPPING_RULE["cusolverDnHandle_t"] == "musolverDnHandle_t"
@@ -310,6 +357,7 @@ class TestLibraryMappings:
 
     def test_cufft(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cufft"] == "mufft"
         assert _MAPPING_RULE["CUFFT"] == "MUFFT"
         assert _MAPPING_RULE["cufftHandle"] == "mufftHandle"
@@ -322,6 +370,7 @@ class TestLibraryMappings:
 
     def test_cutlass(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cutlass"] == "mutlass"
         assert _MAPPING_RULE["CUTLASS"] == "MUTLASS"
         assert _MAPPING_RULE["cutlass/"] == "mutlass/"
@@ -329,11 +378,13 @@ class TestLibraryMappings:
 
     def test_cub(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cub::"] == "mub::"
         assert _MAPPING_RULE["cub/"] == "mub/"
 
     def test_thrust(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["thrust::cuda"] == "thrust::musa"
 
 
@@ -342,6 +393,7 @@ class TestIntrinsicMappings:
 
     def test_shuffle_intrinsics(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["__shfl_sync"] == "__shfl_sync"
         assert _MAPPING_RULE["__shfl_xor_sync"] == "__shfl_xor_sync"
         assert _MAPPING_RULE["__shfl_up_sync"] == "__shfl_up_sync"
@@ -349,12 +401,14 @@ class TestIntrinsicMappings:
 
     def test_vote_intrinsics(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["__ballot_sync"] == "__ballot_sync"
         assert _MAPPING_RULE["__any_sync"] == "__any_sync"
         assert _MAPPING_RULE["__all_sync"] == "__all_sync"
 
     def test_sync_intrinsics(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["__syncthreads"] == "__syncthreads"
         assert _MAPPING_RULE["__syncwarp"] == "__syncwarp"
         assert _MAPPING_RULE["__threadfence"] == "__threadfence"
@@ -363,6 +417,7 @@ class TestIntrinsicMappings:
 
     def test_atomic_operations(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["atomicAdd"] == "atomicAdd"
         assert _MAPPING_RULE["atomicSub"] == "atomicSub"
         assert _MAPPING_RULE["atomicExch"] == "atomicExch"
@@ -377,6 +432,7 @@ class TestIntrinsicMappings:
 
     def test_half_precision(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["__float2half"] == "__float2half"
         assert _MAPPING_RULE["__half2float"] == "__half2float"
         assert _MAPPING_RULE["__hadd"] == "__hadd"
@@ -391,6 +447,7 @@ class TestIncludeMappings:
 
     def test_cuda_headers(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["cuda_runtime.h"] == "musa_runtime.h"
         assert _MAPPING_RULE["cuda_runtime_api.h"] == "musa_runtime_api.h"
         assert _MAPPING_RULE["cuda.h"] == "musa.h"
@@ -403,12 +460,14 @@ class TestPyTorchCppMappings:
 
     def test_pytorch_stream_utils(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["getCurrentCUDAStream"] == "getCurrentMUSAStream"
         assert _MAPPING_RULE["getDefaultCUDAStream"] == "getDefaultMUSAStream"
         assert _MAPPING_RULE["CUDAStream"] == "MUSAStream"
 
     def test_pytorch_guards(self):
         from torchada._mapping import _MAPPING_RULE
+
         assert _MAPPING_RULE["CUDAGuard"] == "MUSAGuard"
         assert _MAPPING_RULE["OptionalCUDAGuard"] == "OptionalMUSAGuard"
         assert _MAPPING_RULE["CUDAStreamGuard"] == "MUSAStreamGuard"
@@ -416,9 +475,19 @@ class TestPyTorchCppMappings:
 
     def test_pytorch_torch_namespace(self):
         from torchada._mapping import _MAPPING_RULE
-        assert _MAPPING_RULE["torch::cuda::getCurrentCUDAStream"] == "torch::musa::getCurrentMUSAStream"
-        assert _MAPPING_RULE["torch::cuda::getDefaultCUDAStream"] == "torch::musa::getDefaultMUSAStream"
-        assert _MAPPING_RULE["torch::cuda::getStreamFromPool"] == "torch::musa::getStreamFromPool"
+
+        assert (
+            _MAPPING_RULE["torch::cuda::getCurrentCUDAStream"]
+            == "torch::musa::getCurrentMUSAStream"
+        )
+        assert (
+            _MAPPING_RULE["torch::cuda::getDefaultCUDAStream"]
+            == "torch::musa::getDefaultMUSAStream"
+        )
+        assert (
+            _MAPPING_RULE["torch::cuda::getStreamFromPool"]
+            == "torch::musa::getStreamFromPool"
+        )
 
 
 class TestMappingCount:
@@ -426,11 +495,13 @@ class TestMappingCount:
 
     def test_mapping_count(self):
         from torchada._mapping import _MAPPING_RULE
+
         # We should have a substantial number of mappings
         assert len(_MAPPING_RULE) >= 250
 
     def test_ext_replaced_mapping(self):
         from torchada._mapping import EXT_REPLACED_MAPPING
+
         # Extensions are converted: .cu -> .mu, .cuh -> .muh for mcc compiler
         assert EXT_REPLACED_MAPPING["cu"] == "mu"
         assert EXT_REPLACED_MAPPING["cuh"] == "muh"

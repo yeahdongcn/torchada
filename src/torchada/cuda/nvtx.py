@@ -20,23 +20,22 @@ Usage:
 from contextlib import contextmanager
 from typing import Optional
 
-
 __all__ = [
-    'mark',
-    'range',
-    'range_push',
-    'range_pop',
-    'range_start',
-    'range_end',
+    "mark",
+    "range",
+    "range_push",
+    "range_pop",
+    "range_start",
+    "range_end",
 ]
 
 
 def mark(msg: str) -> None:
     """
     Mark an instantaneous event in the timeline.
-    
+
     This is a no-op on MUSA platform.
-    
+
     Args:
         msg: The message to associate with the mark.
     """
@@ -46,12 +45,12 @@ def mark(msg: str) -> None:
 def range_push(msg: str) -> int:
     """
     Push a range onto the stack.
-    
+
     This is a no-op on MUSA platform.
-    
+
     Args:
         msg: The message to associate with the range.
-        
+
     Returns:
         The zero-based depth of the range that is started.
     """
@@ -61,7 +60,7 @@ def range_push(msg: str) -> int:
 def range_pop() -> None:
     """
     Pop a range off the stack.
-    
+
     This is a no-op on MUSA platform.
     """
     pass
@@ -70,12 +69,12 @@ def range_pop() -> None:
 def range_start(msg: str) -> int:
     """
     Start a range.
-    
+
     This is a no-op on MUSA platform.
-    
+
     Args:
         msg: The message to associate with the range.
-        
+
     Returns:
         A range ID that can be passed to range_end.
     """
@@ -85,9 +84,9 @@ def range_start(msg: str) -> int:
 def range_end(range_id: int) -> None:
     """
     End a range.
-    
+
     This is a no-op on MUSA platform.
-    
+
     Args:
         range_id: The range ID returned by range_start.
     """
@@ -98,14 +97,13 @@ def range_end(range_id: int) -> None:
 def range(msg: str, *args, **kwargs):
     """
     Context manager for NVTX ranges.
-    
+
     This is a no-op on MUSA platform.
-    
+
     Args:
         msg: The message to associate with the range.
-        
+
     Yields:
         None
     """
     yield
-

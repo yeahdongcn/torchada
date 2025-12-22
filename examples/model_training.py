@@ -3,22 +3,31 @@
 Model training example using torchada.
 
 This example demonstrates training a simple neural network
-that works on any supported GPU platform transparently.
+that works on any supported GPU platform (CUDA or MUSA) transparently.
 
 Usage:
     Just import torchada at the top of your script, then use
     torch.cuda.* APIs as you normally would.
-"""
 
-import torchada  # noqa: F401 - Import first to apply patches (must be before torch.cuda usage)
+Note:
+    torch.cuda.is_available() returns False on MUSA platform (by design).
+    Use torchada.is_musa_platform() or torch.musa.is_available() for MUSA.
+"""
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
 
 # Use standard torch.cuda imports - they work on any supported GPU
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader, TensorDataset
+
+import torchada  # noqa: F401 - Import first to apply patches (must be before torch.cuda usage)
+
+
+def is_gpu_available():
+    """Check if any GPU (CUDA or MUSA) is available."""
+    return torchada.is_musa_platform() or torch.cuda.is_available()
 
 
 class SimpleModel(nn.Module):
@@ -79,11 +88,13 @@ def train_epoch(model, dataloader, criterion, optimizer, scaler, use_amp=True):
 
 
 def main():
-    # Check GPU availability - use standard torch.cuda API
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # Check GPU availability (works on both CUDA and MUSA)
+    gpu_available = is_gpu_available()
+    device = "cuda" if gpu_available else "cpu"
     print(f"Using device: {device}")
+    print(f"Platform: {torchada.get_platform().name}")
 
-    if torch.cuda.is_available():
+    if gpu_available:
         print(f"Device name: {torch.cuda.get_device_name()}")
 
     # Create dummy dataset
@@ -97,9 +108,10 @@ def main():
     dataset = TensorDataset(X, y)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
 
-    # Create model, move to GPU
+    # Create model, move to GPU (works on both CUDA and MUSA)
     model = SimpleModel(input_size=input_size, output_size=num_classes)
-    model = model.cuda()
+    if gpu_available:
+        model = model.cuda()
 
     print(f"Model device: {next(model.parameters()).device}")
 
@@ -110,7 +122,7 @@ def main():
 
     # Train for a few epochs
     num_epochs = 3
-    use_amp = torch.cuda.is_available()  # Use AMP only on GPU
+    use_amp = gpu_available  # Use AMP only on GPU
 
     print(f"\nTraining for {num_epochs} epochs (AMP: {use_amp})...")
 
@@ -118,16 +130,17 @@ def main():
         loss = train_epoch(model, dataloader, criterion, optimizer, scaler, use_amp)
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss:.4f}")
 
-        if torch.cuda.is_available():
-            print(f"  Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+        if gpu_available:
+            print(
+                f"  Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB"
+            )
 
     print("\nTraining complete!")
 
     # Cleanup
-    if torch.cuda.is_available():
+    if gpu_available:
         torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
     main()
-

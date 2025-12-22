@@ -4,8 +4,9 @@ Tests for torch.cuda patching functionality.
 These tests verify that torch.cuda.* APIs work transparently on MUSA.
 """
 
-import pytest
 import sys
+
+import pytest
 
 
 class TestTorchCudaModule:
@@ -13,8 +14,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_is_patched_on_musa(self):
         """Test that torch.cuda is patched to torch.musa on MUSA platform."""
-        import torchada
         import torch
+
+        import torchada
 
         if torchada.is_musa_platform():
             # torch.cuda should now be torch_musa
@@ -31,8 +33,9 @@ class TestTorchCudaModule:
             if torch.cuda.is_available():  # CUDA
             elif torch.musa.is_available():  # MUSA
         """
-        import torchada
         import torch
+
+        import torchada
 
         result = torch.cuda.is_available()
         assert isinstance(result, bool)
@@ -43,12 +46,14 @@ class TestTorchCudaModule:
             assert result is False
             # But torch.musa.is_available() should return True
             import torch_musa
+
             assert torch_musa.is_available() is True
 
     def test_torch_cuda_device_count(self):
         """Test torch.cuda.device_count() works."""
-        import torchada
         import torch
+
+        import torchada
 
         count = torch.cuda.device_count()
         assert isinstance(count, int)
@@ -56,12 +61,14 @@ class TestTorchCudaModule:
 
         if torchada.is_musa_platform() and torch.cuda.is_available():
             import torch_musa
+
             assert count == torch_musa.device_count()
 
     def test_torch_cuda_current_device(self):
         """Test torch.cuda.current_device() works when GPU available."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             device_id = torch.cuda.current_device()
@@ -71,8 +78,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_get_device_name(self):
         """Test torch.cuda.get_device_name() works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             name = torch.cuda.get_device_name()
@@ -86,8 +94,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_synchronize(self):
         """Test torch.cuda.synchronize() works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             # Should not raise
@@ -95,8 +104,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_empty_cache(self):
         """Test torch.cuda.empty_cache() works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             # Should not raise
@@ -104,8 +114,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_memory_allocated(self):
         """Test torch.cuda.memory_allocated() works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             mem = torch.cuda.memory_allocated()
@@ -114,8 +125,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_memory_reserved(self):
         """Test torch.cuda.memory_reserved() works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             mem = torch.cuda.memory_reserved()
@@ -124,8 +136,9 @@ class TestTorchCudaModule:
 
     def test_torch_cuda_set_device(self):
         """Test torch.cuda.set_device() works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             current = torch.cuda.current_device()
@@ -142,18 +155,22 @@ class TestTorchCudaLazyInit:
         This is needed because torch_musa only maps _lazy_init but not _lazy_call.
         torchada patches this to make from torch.cuda import _lazy_call work.
         """
-        import torchada
         from torch.cuda import _lazy_call
+
+        import torchada
+
         assert _lazy_call is not None
         assert callable(_lazy_call)
 
     def test_lazy_call_functionality(self):
         """Test that _lazy_call works correctly."""
-        import torchada
         from torch.cuda import _lazy_call
+
+        import torchada
 
         # _lazy_call should accept a callable and queue it for lazy execution
         called = []
+
         def test_callback():
             called.append(True)
 
@@ -166,21 +183,26 @@ class TestTorchCudaAmp:
 
     def test_import_autocast(self):
         """Test that autocast can be imported from torch.cuda.amp."""
-        import torchada
         from torch.cuda.amp import autocast
+
+        import torchada
+
         assert autocast is not None
 
     def test_import_grad_scaler(self):
         """Test that GradScaler can be imported from torch.cuda.amp."""
-        import torchada
         from torch.cuda.amp import GradScaler
+
+        import torchada
+
         assert GradScaler is not None
 
     def test_autocast_context_manager(self):
         """Test autocast works as context manager."""
-        import torchada
         import torch
         from torch.cuda.amp import autocast
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -195,9 +217,10 @@ class TestTorchCudaAmp:
 
     def test_grad_scaler_creation(self):
         """Test GradScaler can be created."""
-        import torchada
         import torch
         from torch.cuda.amp import GradScaler
+
+        import torchada
 
         if torch.cuda.is_available():
             scaler = GradScaler()
@@ -209,24 +232,27 @@ class TestCUDAGraph:
 
     def test_cuda_graph_alias(self):
         """Test torch.cuda.CUDAGraph is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'CUDAGraph')
-        assert hasattr(torch.cuda, 'MUSAGraph')
+        import torchada
+
+        assert hasattr(torch.cuda, "CUDAGraph")
+        assert hasattr(torch.cuda, "MUSAGraph")
 
     def test_cuda_graph_is_musa_graph(self):
         """Test torch.cuda.CUDAGraph is aliased to MUSAGraph on MUSA."""
-        import torchada
         import torch
+
+        import torchada
 
         if torchada.is_musa_platform():
             assert torch.cuda.CUDAGraph is torch.cuda.MUSAGraph
 
     def test_cuda_graph_creation(self):
         """Test CUDAGraph can be created."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             try:
@@ -239,24 +265,27 @@ class TestCUDAGraph:
 
     def test_graphs_module(self):
         """Test torch.cuda.graphs module is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'graphs')
+        import torchada
+
+        assert hasattr(torch.cuda, "graphs")
 
     def test_make_graphed_callables(self):
         """Test make_graphed_callables is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'make_graphed_callables')
+        import torchada
+
+        assert hasattr(torch.cuda, "make_graphed_callables")
 
     def test_graph_pool_handle(self):
         """Test graph_pool_handle is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'graph_pool_handle')
+        import torchada
+
+        assert hasattr(torch.cuda, "graph_pool_handle")
 
 
 class TestDistributedBackend:
@@ -272,27 +301,30 @@ class TestDistributedBackend:
 
     def test_mccl_backend_available(self):
         """Test MCCL backend is registered."""
-        import torchada
         import torch.distributed as dist
 
+        import torchada
+
         if torchada.is_musa_platform():
-            assert hasattr(dist.Backend, 'MCCL')
+            assert hasattr(dist.Backend, "MCCL")
 
     def test_nccl_backend_available(self):
         """Test NCCL backend constant is still available."""
-        import torchada
         import torch.distributed as dist
 
-        assert hasattr(dist.Backend, 'NCCL')
+        import torchada
+
+        assert hasattr(dist.Backend, "NCCL")
 
     def test_new_group_patched(self):
         """Test new_group is patched to translate nccl->mccl."""
-        import torchada
         import torch.distributed as dist
+
+        import torchada
 
         if torchada.is_musa_platform():
             # Check new_group is wrapped
-            assert hasattr(dist.new_group, '__wrapped__')
+            assert hasattr(dist.new_group, "__wrapped__")
 
 
 class TestNCCLModule:
@@ -300,11 +332,12 @@ class TestNCCLModule:
 
     def test_mccl_module_available(self):
         """Test torch.cuda.mccl is available."""
-        import torchada
         import torch
 
+        import torchada
+
         if torchada.is_musa_platform():
-            assert hasattr(torch.cuda, 'mccl')
+            assert hasattr(torch.cuda, "mccl")
 
 
 class TestRNGFunctions:
@@ -312,50 +345,57 @@ class TestRNGFunctions:
 
     def test_get_rng_state(self):
         """Test torch.cuda.get_rng_state is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'get_rng_state')
+        import torchada
+
+        assert hasattr(torch.cuda, "get_rng_state")
 
     def test_set_rng_state(self):
         """Test torch.cuda.set_rng_state is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'set_rng_state')
+        import torchada
+
+        assert hasattr(torch.cuda, "set_rng_state")
 
     def test_manual_seed(self):
         """Test torch.cuda.manual_seed is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'manual_seed')
+        import torchada
+
+        assert hasattr(torch.cuda, "manual_seed")
 
     def test_manual_seed_all(self):
         """Test torch.cuda.manual_seed_all is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'manual_seed_all')
+        import torchada
+
+        assert hasattr(torch.cuda, "manual_seed_all")
 
     def test_seed(self):
         """Test torch.cuda.seed is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'seed')
+        import torchada
+
+        assert hasattr(torch.cuda, "seed")
 
     def test_initial_seed(self):
         """Test torch.cuda.initial_seed is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'initial_seed')
+        import torchada
+
+        assert hasattr(torch.cuda, "initial_seed")
 
     def test_manual_seed_works(self):
         """Test torch.cuda.manual_seed actually works."""
-        import torchada
         import torch
+
+        import torchada
 
         if torch.cuda.is_available():
             torch.cuda.manual_seed(42)
@@ -366,52 +406,59 @@ class TestMemoryFunctions:
 
     def test_max_memory_allocated(self):
         """Test torch.cuda.max_memory_allocated is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'max_memory_allocated')
+        import torchada
+
+        assert hasattr(torch.cuda, "max_memory_allocated")
 
     def test_max_memory_reserved(self):
         """Test torch.cuda.max_memory_reserved is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'max_memory_reserved')
+        import torchada
+
+        assert hasattr(torch.cuda, "max_memory_reserved")
 
     def test_memory_stats(self):
         """Test torch.cuda.memory_stats is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'memory_stats')
+        import torchada
+
+        assert hasattr(torch.cuda, "memory_stats")
 
     def test_memory_summary(self):
         """Test torch.cuda.memory_summary is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'memory_summary')
+        import torchada
+
+        assert hasattr(torch.cuda, "memory_summary")
 
     def test_memory_snapshot(self):
         """Test torch.cuda.memory_snapshot is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'memory_snapshot')
+        import torchada
+
+        assert hasattr(torch.cuda, "memory_snapshot")
 
     def test_reset_peak_memory_stats(self):
         """Test torch.cuda.reset_peak_memory_stats is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'reset_peak_memory_stats')
+        import torchada
+
+        assert hasattr(torch.cuda, "reset_peak_memory_stats")
 
     def test_mem_get_info(self):
         """Test torch.cuda.mem_get_info is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'mem_get_info')
+        import torchada
+
+        assert hasattr(torch.cuda, "mem_get_info")
 
         if torch.cuda.is_available():
             try:
@@ -429,63 +476,71 @@ class TestStreamAndEvent:
 
     def test_stream_class(self):
         """Test torch.cuda.Stream is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'Stream')
+        import torchada
+
+        assert hasattr(torch.cuda, "Stream")
 
     def test_event_class(self):
         """Test torch.cuda.Event is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'Event')
+        import torchada
+
+        assert hasattr(torch.cuda, "Event")
 
     def test_external_stream_class(self):
         """Test torch.cuda.ExternalStream is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'ExternalStream')
+        import torchada
+
+        assert hasattr(torch.cuda, "ExternalStream")
 
     def test_current_stream(self):
         """Test torch.cuda.current_stream is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'current_stream')
+        import torchada
+
+        assert hasattr(torch.cuda, "current_stream")
 
     def test_default_stream(self):
         """Test torch.cuda.default_stream is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'default_stream')
+        import torchada
+
+        assert hasattr(torch.cuda, "default_stream")
 
     def test_set_stream(self):
         """Test torch.cuda.set_stream is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'set_stream')
+        import torchada
+
+        assert hasattr(torch.cuda, "set_stream")
 
     def test_stream_context_manager(self):
         """Test torch.cuda.stream is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'stream')
+        import torchada
+
+        assert hasattr(torch.cuda, "stream")
 
     def test_stream_cuda_stream_property(self):
         """Test stream.cuda_stream returns same value as stream.musa_stream on MUSA."""
-        import torchada
         import torch
+
+        import torchada
 
         if torchada.is_musa_platform() and torch.cuda.is_available():
             try:
                 stream = torch.cuda.Stream()
-                assert hasattr(stream, 'cuda_stream')
-                assert hasattr(stream, 'musa_stream')
+                assert hasattr(stream, "cuda_stream")
+                assert hasattr(stream, "musa_stream")
                 assert stream.cuda_stream == stream.musa_stream
             except RuntimeError as e:
                 if "MUSA" in str(e) or "invalid device function" in str(e):
@@ -498,17 +553,19 @@ class TestContextManagers:
 
     def test_device_context_manager(self):
         """Test torch.cuda.device is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'device')
+        import torchada
+
+        assert hasattr(torch.cuda, "device")
 
     def test_device_of_context_manager(self):
         """Test torch.cuda.device_of is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'device_of')
+        import torchada
+
+        assert hasattr(torch.cuda, "device_of")
 
 
 class TestDeviceFunctions:
@@ -516,23 +573,25 @@ class TestDeviceFunctions:
 
     def test_get_device_properties(self):
         """Test torch.cuda.get_device_properties is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'get_device_properties')
+        import torchada
+
+        assert hasattr(torch.cuda, "get_device_properties")
 
         if torch.cuda.is_available():
             props = torch.cuda.get_device_properties(0)
             assert props is not None
-            assert hasattr(props, 'name')
-            assert hasattr(props, 'total_memory')
+            assert hasattr(props, "name")
+            assert hasattr(props, "total_memory")
 
     def test_get_device_capability(self):
         """Test torch.cuda.get_device_capability is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'get_device_capability')
+        import torchada
+
+        assert hasattr(torch.cuda, "get_device_capability")
 
         if torch.cuda.is_available():
             cap = torch.cuda.get_device_capability(0)
@@ -541,10 +600,11 @@ class TestDeviceFunctions:
 
     def test_is_initialized(self):
         """Test torch.cuda.is_initialized is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'is_initialized')
+        import torchada
+
+        assert hasattr(torch.cuda, "is_initialized")
 
 
 class TestTorchVersionCuda:
@@ -558,8 +618,9 @@ class TestTorchVersionCuda:
 
     def test_torch_version_cuda_not_patched(self):
         """Test torch.version.cuda is NOT patched on MUSA platform."""
-        import torchada
         import torch
+
+        import torchada
 
         if torchada.is_musa_platform():
             # torch.version.cuda should remain None on MUSA
@@ -575,20 +636,22 @@ class TestTensorIsCuda:
 
     def test_cpu_tensor_is_cuda_false(self):
         """Test CPU tensor.is_cuda returns False."""
-        import torchada
         import torch
+
+        import torchada
 
         cpu_tensor = torch.empty(10, 10)
         assert cpu_tensor.is_cuda is False
 
     def test_musa_tensor_is_cuda_true(self):
         """Test MUSA tensor.is_cuda returns True on MUSA platform."""
-        import torchada
         import torch
+
+        import torchada
 
         if torchada.is_musa_platform() and torch.cuda.is_available():
             try:
-                musa_tensor = torch.empty(10, 10, device='cuda:0')
+                musa_tensor = torch.empty(10, 10, device="cuda:0")
                 assert musa_tensor.is_cuda is True
                 assert musa_tensor.is_musa is True
             except RuntimeError as e:
@@ -649,37 +712,41 @@ class TestNvtxStub:
 
     def test_nvtx_module_available(self):
         """Test torch.cuda.nvtx is available."""
-        import torchada
         import torch
 
-        assert hasattr(torch.cuda, 'nvtx')
+        import torchada
+
+        assert hasattr(torch.cuda, "nvtx")
 
     def test_nvtx_mark(self):
         """Test torch.cuda.nvtx.mark is available and callable."""
-        import torchada
         import torch.cuda.nvtx as nvtx
 
-        assert hasattr(nvtx, 'mark')
+        import torchada
+
+        assert hasattr(nvtx, "mark")
         # Should not raise
         nvtx.mark("test")
 
     def test_nvtx_range_push_pop(self):
         """Test torch.cuda.nvtx.range_push and range_pop are available."""
-        import torchada
         import torch.cuda.nvtx as nvtx
 
-        assert hasattr(nvtx, 'range_push')
-        assert hasattr(nvtx, 'range_pop')
+        import torchada
+
+        assert hasattr(nvtx, "range_push")
+        assert hasattr(nvtx, "range_pop")
         # Should not raise
         nvtx.range_push("test")
         nvtx.range_pop()
 
     def test_nvtx_range_context_manager(self):
         """Test torch.cuda.nvtx.range context manager works."""
-        import torchada
         import torch.cuda.nvtx as nvtx
 
-        assert hasattr(nvtx, 'range')
+        import torchada
+
+        assert hasattr(nvtx, "range")
         # Should not raise
         with nvtx.range("test"):
             pass
@@ -708,14 +775,14 @@ class TestPatchDecorators:
 
         # Check expected functions are registered
         expected_fns = [
-            '_patch_torch_device',
-            '_patch_torch_cuda_module',
-            '_patch_distributed_backend',
-            '_patch_tensor_is_cuda',
-            '_patch_stream_cuda_stream',
-            '_patch_autocast',
-            '_patch_cpp_extension',
-            '_patch_autotune_process',
+            "_patch_torch_device",
+            "_patch_torch_cuda_module",
+            "_patch_distributed_backend",
+            "_patch_tensor_is_cuda",
+            "_patch_stream_cuda_stream",
+            "_patch_autocast",
+            "_patch_cpp_extension",
+            "_patch_autotune_process",
         ]
 
         for expected in expected_fns:
@@ -725,7 +792,7 @@ class TestPatchDecorators:
         """Test that @requires_import returns early when import fails."""
         from torchada._patch import requires_import
 
-        @requires_import('nonexistent_module_that_does_not_exist')
+        @requires_import("nonexistent_module_that_does_not_exist")
         def test_func():
             raise AssertionError("Should not be called when import fails")
 
@@ -737,7 +804,7 @@ class TestPatchDecorators:
         """Test that @requires_import allows execution when import succeeds."""
         from torchada._patch import requires_import
 
-        @requires_import('sys')  # 'sys' always exists
+        @requires_import("sys")  # 'sys' always exists
         def test_func():
             return "executed"
 
@@ -748,14 +815,14 @@ class TestPatchDecorators:
         """Test @requires_import with multiple module names."""
         from torchada._patch import requires_import
 
-        @requires_import('sys', 'os')
+        @requires_import("sys", "os")
         def test_func():
             return "success"
 
         result = test_func()
         assert result == "success"
 
-        @requires_import('sys', 'nonexistent_module_xyz')
+        @requires_import("sys", "nonexistent_module_xyz")
         def test_func_fails():
             raise AssertionError("Should not run")
 

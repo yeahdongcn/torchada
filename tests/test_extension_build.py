@@ -9,16 +9,16 @@ should work transparently:
     from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 """
 
-import pytest
 import os
-import sys
-import tempfile
 import shutil
 import subprocess
+import sys
+import tempfile
+
+import pytest
 
 # Import torchada first to apply patches
 import torchada  # noqa: F401
-
 
 # Get the path to the test CUDA source file
 CSRC_DIR = os.path.join(os.path.dirname(__file__), "csrc")
@@ -35,7 +35,7 @@ class TestExtensionBuildSetup:
     def test_can_create_setup_py(self):
         """Test that we can create a setup.py for the extension."""
         # Use standard torch imports - torchada patches make them work on MUSA
-        from torch.utils.cpp_extension import CUDAExtension, BuildExtension
+        from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
         # Create a temporary directory for the test
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -43,7 +43,7 @@ class TestExtensionBuildSetup:
             shutil.copy(VECTOR_ADD_CU, tmpdir)
 
             # Create setup.py content - uses standard torch imports
-            setup_content = f'''
+            setup_content = f"""
 import torchada  # noqa: F401 - Apply MUSA patches
 from setuptools import setup
 from torch.utils.cpp_extension import CUDAExtension, BuildExtension
@@ -58,7 +58,7 @@ setup(
     ],
     cmdclass={{"build_ext": BuildExtension}},
 )
-'''
+"""
             setup_path = os.path.join(tmpdir, "setup.py")
             with open(setup_path, "w") as f:
                 f.write(setup_content)
@@ -76,7 +76,7 @@ setup(
 
 @pytest.mark.skipif(
     not os.environ.get("TORCHADA_TEST_BUILD", "0") == "1",
-    reason="Extension build tests are slow; set TORCHADA_TEST_BUILD=1 to run"
+    reason="Extension build tests are slow; set TORCHADA_TEST_BUILD=1 to run",
 )
 class TestExtensionBuild:
     """Test actual extension building (slow, opt-in)."""
@@ -93,7 +93,7 @@ class TestExtensionBuild:
             shutil.copy(VECTOR_ADD_CU, tmpdir)
 
             # Create setup.py using standard torch imports
-            setup_content = '''
+            setup_content = """
 import torchada  # noqa: F401 - Apply MUSA patches
 from setuptools import setup
 from torch.utils.cpp_extension import CUDAExtension, BuildExtension
@@ -108,7 +108,7 @@ setup(
     ],
     cmdclass={"build_ext": BuildExtension},
 )
-'''
+"""
             setup_path = os.path.join(tmpdir, "setup.py")
             with open(setup_path, "w") as f:
                 f.write(setup_content)
@@ -129,7 +129,9 @@ setup(
             assert result.returncode == 0, f"Build failed: {result.stderr}"
 
             # Check that the extension was built
-            ext_files = [f for f in os.listdir(tmpdir) if f.endswith(".so") or f.endswith(".pyd")]
+            ext_files = [
+                f for f in os.listdir(tmpdir) if f.endswith(".so") or f.endswith(".pyd")
+            ]
             assert len(ext_files) > 0, "No extension file was built"
 
     def test_run_vector_add_extension(self):
@@ -144,7 +146,7 @@ setup(
             shutil.copy(VECTOR_ADD_CU, tmpdir)
 
             # Create setup.py using standard torch imports
-            setup_content = '''
+            setup_content = """
 import torchada  # noqa: F401 - Apply MUSA patches
 from setuptools import setup
 from torch.utils.cpp_extension import CUDAExtension, BuildExtension
@@ -159,7 +161,7 @@ setup(
     ],
     cmdclass={"build_ext": BuildExtension},
 )
-'''
+"""
             setup_path = os.path.join(tmpdir, "setup.py")
             with open(setup_path, "w") as f:
                 f.write(setup_content)
@@ -199,4 +201,3 @@ setup(
                     raise
             finally:
                 sys.path.remove(tmpdir)
-

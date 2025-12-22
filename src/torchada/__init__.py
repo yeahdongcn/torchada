@@ -11,32 +11,32 @@ Usage:
     Moore Threads hardware.
 
     # Add this at the top of your script:
-    import torchada  # noqa: F401
+    import torchada
 
-    # Then use standard torch APIs - they work on MUSA too!
-    import torch
-    torch.cuda.is_available()
-    x = torch.randn(3, 3).cuda()
-    from torch.cuda.amp import autocast, GradScaler
+    # Check for GPU availability (works on both CUDA and MUSA)
+    if torchada.is_musa_platform() or torch.cuda.is_available():
+        # Use standard torch.cuda APIs - they work on MUSA too!
+        x = torch.randn(3, 3).cuda()
+        torch.cuda.synchronize()
+
+    # Build extensions using standard imports:
     from torch.utils.cpp_extension import CUDAExtension, BuildExtension, CUDA_HOME
 """
 
 __version__ = "0.1.0"
 
-from . import cuda
-from . import utils
+from . import cuda, utils
+from ._patch import apply_patches, get_original_init_process_group, is_patched
 from ._platform import (
     Platform,
     detect_platform,
-    is_musa_platform,
-    is_cuda_platform,
-    is_cpu_platform,
     get_device_name,
     get_torch_device_module,
+    is_cpu_platform,
+    is_cuda_platform,
+    is_musa_platform,
 )
-from ._patch import apply_patches, is_patched, get_original_init_process_group
 from .utils.cpp_extension import CUDA_HOME
-
 
 # Automatically apply patches on import
 apply_patches()
@@ -85,4 +85,3 @@ __all__ = [
     # C++ Extension building
     "CUDA_HOME",
 ]
-
