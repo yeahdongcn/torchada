@@ -655,3 +655,81 @@ class TestNvtxStub:
         # Should not raise
         with nvtx.range("test"):
             pass
+
+
+class TestPatchDecorators:
+    """Test the decorator-based patch registration system."""
+
+    def test_patch_registry_is_populated(self):
+        """Test that @patch_function decorator populates the registry."""
+        from torchada._patch import _patch_registry
+
+        # Registry should have at least 8 registered patches
+        assert len(_patch_registry) >= 8
+
+        # All entries should be callable
+        for fn in _patch_registry:
+            assert callable(fn)
+
+    def test_patch_registry_contains_expected_functions(self):
+        """Test that registry contains the expected patch functions."""
+        from torchada._patch import _patch_registry
+
+        # Get function names from registry
+        fn_names = [fn.__name__ for fn in _patch_registry]
+
+        # Check expected functions are registered
+        expected_fns = [
+            '_patch_torch_device',
+            '_patch_torch_cuda_module',
+            '_patch_distributed_backend',
+            '_patch_tensor_is_cuda',
+            '_patch_stream_cuda_stream',
+            '_patch_autocast',
+            '_patch_cpp_extension',
+            '_patch_autotune_process',
+        ]
+
+        for expected in expected_fns:
+            assert expected in fn_names, f"{expected} not found in registry"
+
+    def test_requires_import_decorator_guards_import(self):
+        """Test that @requires_import returns early when import fails."""
+        from torchada._patch import requires_import
+
+        @requires_import('nonexistent_module_that_does_not_exist')
+        def test_func():
+            raise AssertionError("Should not be called when import fails")
+
+        # Should return None without raising
+        result = test_func()
+        assert result is None
+
+    def test_requires_import_decorator_allows_execution(self):
+        """Test that @requires_import allows execution when import succeeds."""
+        from torchada._patch import requires_import
+
+        @requires_import('sys')  # 'sys' always exists
+        def test_func():
+            return "executed"
+
+        result = test_func()
+        assert result == "executed"
+
+    def test_requires_import_multiple_modules(self):
+        """Test @requires_import with multiple module names."""
+        from torchada._patch import requires_import
+
+        @requires_import('sys', 'os')
+        def test_func():
+            return "success"
+
+        result = test_func()
+        assert result == "success"
+
+        @requires_import('sys', 'nonexistent_module_xyz')
+        def test_func_fails():
+            raise AssertionError("Should not run")
+
+        result = test_func_fails()
+        assert result is None

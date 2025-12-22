@@ -34,6 +34,69 @@ from ._platform import is_musa_platform
 _patched = False
 _original_init_process_group = None
 
+# Registry for patch functions
+_patch_registry: list[Callable[[], None]] = []
+
+
+def patch_function(func: Callable[[], None]) -> Callable[[], None]:
+    """
+    Decorator to register a function to be called during patching.
+
+    This follows the registration pattern used in frameworks like Flask (@app.route),
+    pytest (@pytest.fixture), and Django (@receiver). It allows patch functions
+    to be defined anywhere in the module and automatically collected for application.
+
+    Usage:
+        @patch_function
+        def _patch_something():
+            # patching logic
+            pass
+
+    The decorated function will be called by apply_patches() in registration order.
+    """
+    _patch_registry.append(func)
+    return func
+
+
+def requires_import(*module_names: str) -> Callable[[Callable], Callable]:
+    """
+    Decorator to guard a patch function with import checks.
+
+    If any of the specified modules cannot be imported, the decorated function
+    returns early without executing. This replaces repetitive try/except patterns.
+
+    Usage:
+        @patch_function
+        @requires_import('torch_musa')
+        def _patch_something():
+            # This only runs if torch_musa is importable
+            import torch_musa
+            # ... patching logic
+
+        @patch_function
+        @requires_import('torch._inductor.autotune_process')
+        def _patch_autotune():
+            import torch._inductor.autotune_process as ap
+            # ... patching logic
+
+    Args:
+        *module_names: Variable number of module names to check for importability
+
+    Returns:
+        A decorator that wraps the function with import guards
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for module_name in module_names:
+                try:
+                    __import__(module_name)
+                except ImportError:
+                    return None
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
 
 def _translate_device(device: Any) -> Any:
     """
@@ -173,6 +236,7 @@ class DeviceFactoryWrapper(metaclass=_DeviceFactoryMeta):
             return original()
 
 
+@patch_function
 def _patch_torch_device():
     """
     Patch torch.device to translate 'cuda' to 'musa' on MUSA platform.
@@ -247,6 +311,8 @@ class _CudaModuleWrapper(ModuleType):
 _original_torch_cuda = None
 
 
+@patch_function
+@requires_import('torch_musa')
 def _patch_torch_cuda_module():
     """
     Patch torch.cuda to redirect to torch.musa on MUSA platform.
@@ -257,11 +323,6 @@ def _patch_torch_cuda_module():
     behavior to allow downstream projects to detect the platform properly.
     """
     global _original_torch_cuda
-
-    try:
-        import torch_musa
-    except ImportError:
-        return
 
     # torch_musa registers itself as torch.musa when imported
     # Now patch torch.cuda to point to torch.musa (which is torch_musa)
@@ -310,6 +371,8 @@ def _patch_torch_cuda_module():
             pass
 
 
+@patch_function
+@requires_import('torch.distributed')
 def _patch_distributed_backend():
     """
     Patch torch.distributed to automatically use MCCL when NCCL is requested.
@@ -318,10 +381,7 @@ def _patch_distributed_backend():
     """
     global _original_init_process_group
 
-    try:
-        import torch.distributed as dist
-    except ImportError:
-        return
+    import torch.distributed as dist
 
     if _original_init_process_group is not None:
         # Already patched
@@ -407,6 +467,7 @@ def _patch_distributed_backend():
     dist.new_group = patched_new_group
 
 
+@patch_function
 def _patch_tensor_is_cuda():
     """
     Patch torch.Tensor.is_cuda property to return True for MUSA tensors.
@@ -433,6 +494,8 @@ def _patch_tensor_is_cuda():
     torch.Tensor.is_cuda = patched_is_cuda
 
 
+@patch_function
+@requires_import('torch_musa.core.stream')
 def _patch_stream_cuda_stream():
     """
     Patch MUSA Stream class to add cuda_stream property.
@@ -440,10 +503,7 @@ def _patch_stream_cuda_stream():
     This allows code that accesses stream.cuda_stream to work on MUSA.
     The cuda_stream property returns the same value as musa_stream.
     """
-    try:
-        from torch_musa.core.stream import Stream as MUSAStream
-    except ImportError:
-        return
+    from torch_musa.core.stream import Stream as MUSAStream
 
     # Add cuda_stream property that returns musa_stream
     if not hasattr(MUSAStream, 'cuda_stream'):
@@ -455,15 +515,12 @@ def _patch_stream_cuda_stream():
         MUSAStream.cuda_stream = cuda_stream
 
 
+@patch_function
+@requires_import('torch_musa')
 def _patch_autocast():
     """
     Ensure torch.amp.autocast works with 'cuda' device_type on MUSA.
     """
-    try:
-        import torch_musa
-    except ImportError:
-        return
-
     if not hasattr(torch, 'amp') or not hasattr(torch.amp, 'autocast'):
         return
 
@@ -479,6 +536,8 @@ def _patch_autocast():
     torch.amp.autocast = PatchedAutocast
 
 
+@patch_function
+@requires_import('torchada.utils.cpp_extension', 'torch.utils.cpp_extension')
 def _patch_cpp_extension():
     """
     Patch torch.utils.cpp_extension to use torchada's MUSA-compatible versions.
@@ -488,13 +547,7 @@ def _patch_cpp_extension():
 
     And have them work transparently on MUSA platform.
     """
-    try:
-        # Import our cpp_extension module which has the MUSA-compatible implementations
-        from .utils import cpp_extension as torchada_cpp_ext
-    except ImportError:
-        return
-
-    # Get the original torch.utils.cpp_extension module
+    from .utils import cpp_extension as torchada_cpp_ext
     import torch.utils.cpp_extension as torch_cpp_ext
 
     # Patch the key classes and functions
@@ -506,6 +559,8 @@ def _patch_cpp_extension():
     sys.modules['torch.utils.cpp_extension'] = torch_cpp_ext
 
 
+@patch_function
+@requires_import('torch._inductor.autotune_process')
 def _patch_autotune_process():
     """
     Patch torch._inductor.autotune_process to use MUSA_VISIBLE_DEVICES on MUSA platform.
@@ -515,11 +570,7 @@ def _patch_autotune_process():
 
     Reference: https://github.com/pytorch/pytorch/blob/main/torch/_inductor/autotune_process.py#L61
     """
-    try:
-        import torch._inductor.autotune_process as autotune_process
-    except ImportError:
-        # torch._inductor may not be available in all torch versions
-        return
+    import torch._inductor.autotune_process as autotune_process
 
     # Patch the CUDA_VISIBLE_DEVICES constant to use MUSA_VISIBLE_DEVICES
     if hasattr(autotune_process, 'CUDA_VISIBLE_DEVICES'):
@@ -550,6 +601,9 @@ def apply_patches():
     - torch._inductor.autotune_process.CUDA_VISIBLE_DEVICES -> MUSA_VISIBLE_DEVICES
 
     This function should be called once at import time.
+
+    Patch functions are registered via the @patch_function decorator and
+    can be guarded with @requires_import for optional module dependencies.
     """
     global _patched
 
@@ -562,35 +616,15 @@ def apply_patches():
 
     # Import torch_musa to ensure it's initialized
     try:
-        import torch_musa
+        import torch_musa  # noqa: F401
     except ImportError:
         _patched = True
         return
 
-    # Patch torch.device to translate cuda to musa
-    _patch_torch_device()
-
-    # Patch torch.Tensor.is_cuda to return True for MUSA tensors
-    _patch_tensor_is_cuda()
-
-    # Patch MUSA Stream to add cuda_stream property
-    _patch_stream_cuda_stream()
-
-    # Patch torch.cuda module to redirect to torch.musa
-    # Note: This also patches torch.cuda.nccl -> torch.musa.mccl
-    _patch_torch_cuda_module()
-
-    # Patch torch.distributed to use MCCL when NCCL is requested
-    _patch_distributed_backend()
-
-    # Patch torch.amp.autocast for device_type translation
-    _patch_autocast()
-
-    # Patch torch.utils.cpp_extension for MUSA compatibility
-    _patch_cpp_extension()
-
-    # Patch torch._inductor.autotune_process for MUSA_VISIBLE_DEVICES
-    _patch_autotune_process()
+    # Apply all registered patch functions
+    # These are registered via @patch_function decorator in definition order
+    for patch_fn in _patch_registry:
+        patch_fn()
 
     # Patch torch.Tensor.to()
     if hasattr(torch.Tensor, 'to'):
