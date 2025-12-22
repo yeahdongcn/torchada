@@ -35,11 +35,18 @@ and `torch.utils.cpp_extension` imports work on all supported platforms.
 downstream projects to properly detect the platform. Use the following pattern:
 
 ```python
-import torchada
+import torchada  # noqa: F401 - Import first to apply patches
+import torch
 
-# Check for any GPU (CUDA or MUSA)
+# Platform detection (sglang-style)
+def _is_cuda():
+    return torch.version.cuda is not None
+
+def _is_musa():
+    return hasattr(torch.version, 'musa') and torch.version.musa is not None
+
 def is_gpu_available():
-    return torchada.is_musa_platform() or torch.cuda.is_available()
+    return _is_cuda() or _is_musa()
 
 if is_gpu_available():
     # Use GPU
@@ -65,8 +72,15 @@ if torch.cuda.is_available():
 import torchada  # Add this line at the top
 import torch
 
+# Platform detection (sglang-style)
+def _is_cuda():
+    return torch.version.cuda is not None
+
+def _is_musa():
+    return hasattr(torch.version, 'musa') and torch.version.musa is not None
+
 # Update GPU availability check to work on both CUDA and MUSA
-if torchada.is_musa_platform() or torch.cuda.is_available():
+if _is_cuda() or _is_musa():
     device = torch.device("cuda")  # Works on MUSA too!
     tensor = torch.randn(100, 100).cuda()  # Moves to MUSA on MUSA platform
     model = MyModel().cuda()
@@ -77,12 +91,18 @@ if torchada.is_musa_platform() or torch.cuda.is_available():
 All standard `torch.cuda` APIs work after importing torchada:
 
 ```python
-import torchada
+import torchada  # noqa: F401 - Import first
 import torch
 
-if torchada.is_musa_platform() or torch.cuda.is_available():
+def _is_cuda():
+    return torch.version.cuda is not None
+
+def _is_musa():
+    return hasattr(torch.version, 'musa') and torch.version.musa is not None
+
+if _is_cuda() or _is_musa():
     torch.cuda.set_device(0)
-    print(f"Platform: {torchada.get_platform().name}")
+    print(f"Platform: {'MUSA' if _is_musa() else 'CUDA'}")
     print(f"Using: {torch.cuda.get_device_name()}")
     print(f"Memory: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
     torch.cuda.synchronize()
@@ -227,7 +247,17 @@ torch.cuda.synchronize()
 ## Tips for Migration
 
 1. **Import torchada first**: Always import torchada before torch to ensure patches are applied
-2. **Update GPU checks**: Replace `torch.cuda.is_available()` with `torchada.is_musa_platform() or torch.cuda.is_available()`
+2. **Update GPU checks**: Use the sglang-style pattern:
+   ```python
+   def _is_cuda():
+       return torch.version.cuda is not None
+
+   def _is_musa():
+       return hasattr(torch.version, 'musa') and torch.version.musa is not None
+
+   if _is_cuda() or _is_musa():
+       # GPU available
+   ```
 3. **Keep standard imports**: Use `from torch.utils.cpp_extension import ...` (not from torchada)
 4. **Keep "cuda" strings**: No need to change device strings - torchada handles platform differences
 5. **Test your code**: Verify your code works correctly after adding the torchada import
@@ -241,10 +271,9 @@ patterns like:
 ```python
 if torch.version.cuda is not None:
     # CUDA platform
-elif hasattr(torch, 'musa') and torch.musa.is_available():
+elif hasattr(torch.version, 'musa') and torch.version.musa is not None:
     # MUSA platform
 ```
 
-Use `torchada.is_musa_platform()` to check for MUSA, and `torchada.get_platform()` to get
-the current platform enum.
+Use `torch.version.cuda` and `torch.version.musa` for platform detection.
 

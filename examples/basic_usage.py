@@ -9,9 +9,9 @@ Usage:
     Just import torchada at the top of your script, then use
     torch.cuda.* APIs as you normally would.
 
-Note:
-    torch.cuda.is_available() returns False on MUSA platform (by design).
-    Use torchada.is_musa_platform() or torch.musa.is_available() for MUSA.
+Platform Detection:
+    - CUDA: torch.version.cuda is not None
+    - MUSA: hasattr(torch.version, 'musa') and torch.version.musa is not None
 """
 
 import torch
@@ -19,16 +19,35 @@ import torch
 import torchada  # noqa: F401 - Import first to apply patches
 
 
+def _is_cuda():
+    """Check if running on CUDA platform."""
+    return torch.version.cuda is not None
+
+
+def _is_musa():
+    """Check if running on MUSA platform."""
+    return hasattr(torch.version, "musa") and torch.version.musa is not None
+
+
 def is_gpu_available():
     """Check if any GPU (CUDA or MUSA) is available."""
-    return torchada.is_musa_platform() or torch.cuda.is_available()
+    return _is_cuda() or _is_musa()
+
+
+def get_platform_name():
+    """Get the platform name."""
+    if _is_cuda():
+        return "CUDA"
+    elif _is_musa():
+        return "MUSA"
+    return "CPU"
 
 
 def main():
     # Check for GPU availability (works on both CUDA and MUSA)
     if is_gpu_available():
         print("GPU is available!")
-        print(f"  Platform: {torchada.get_platform().name}")
+        print(f"  Platform: {get_platform_name()}")
         print(f"  Device count: {torch.cuda.device_count()}")
         print(f"  Current device: {torch.cuda.current_device()}")
         print(f"  Device name: {torch.cuda.get_device_name()}")

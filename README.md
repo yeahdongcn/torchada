@@ -35,8 +35,15 @@ pip install -e .
 import torchada  # Import once to apply patches - that's it!
 import torch
 
+# Platform detection (sglang-style)
+def _is_cuda():
+    return torch.version.cuda is not None
+
+def _is_musa():
+    return hasattr(torch.version, 'musa') and torch.version.musa is not None
+
 # Check for GPU availability (works on both CUDA and MUSA)
-if torchada.is_musa_platform() or torch.cuda.is_available():
+if _is_cuda() or _is_musa():
     # Use standard torch.cuda APIs - they work transparently on MUSA:
     device = torch.device("cuda")  # Creates musa device on MUSA platform
     tensor = torch.randn(10, 10).cuda()  # Moves to MUSA on MUSA platform
@@ -152,8 +159,11 @@ if platform == Platform.MUSA:
 elif platform == Platform.CUDA:
     print("Running on NVIDIA GPU")
 
-# Or use convenience functions
-if torchada.is_musa_platform():
+# Or use torch.version-based detection (sglang-style)
+def _is_musa():
+    return hasattr(torch.version, 'musa') and torch.version.musa is not None
+
+if _is_musa():
     print("MUSA platform detected")
 ```
 
@@ -204,7 +214,7 @@ All standard `torch.cuda` APIs work, including:
 - `amp.autocast()`, `amp.GradScaler()`
 - `_lazy_call()`, `_lazy_init()`
 
-**Note**: `torch.cuda.is_available()` is intentionally NOT redirected. It returns `False` on MUSA to allow proper platform detection. Use `torch.musa.is_available()` or `torchada.is_musa_platform()` instead.
+**Note**: `torch.cuda.is_available()` is intentionally NOT redirected. It returns `False` on MUSA to allow proper platform detection. Use `hasattr(torch.version, 'musa') and torch.version.musa is not None` or `torch.musa.is_available()` instead.
 
 ### torch.utils.cpp_extension (after importing torchada)
 
