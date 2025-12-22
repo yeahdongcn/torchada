@@ -569,6 +569,53 @@ class TestTensorIsCuda:
                 raise
 
 
+class TestAutotuneProcess:
+    """Test torch._inductor.autotune_process patching."""
+
+    def test_cuda_visible_devices_patched(self):
+        """Test CUDA_VISIBLE_DEVICES is patched to MUSA_VISIBLE_DEVICES on MUSA platform."""
+        import torchada
+
+        try:
+            import torch._inductor.autotune_process as autotune_process
+        except ImportError:
+            pytest.skip("torch._inductor.autotune_process not available")
+
+        if torchada.is_musa_platform():
+            # On MUSA platform, CUDA_VISIBLE_DEVICES should be patched to MUSA_VISIBLE_DEVICES
+            assert autotune_process.CUDA_VISIBLE_DEVICES == "MUSA_VISIBLE_DEVICES"
+        else:
+            # On CUDA/CPU, it should remain as CUDA_VISIBLE_DEVICES
+            assert autotune_process.CUDA_VISIBLE_DEVICES == "CUDA_VISIBLE_DEVICES"
+
+    def test_cuda_visible_devices_is_string(self):
+        """Test CUDA_VISIBLE_DEVICES constant is a string."""
+        import torchada
+
+        try:
+            import torch._inductor.autotune_process as autotune_process
+        except ImportError:
+            pytest.skip("torch._inductor.autotune_process not available")
+
+        assert isinstance(autotune_process.CUDA_VISIBLE_DEVICES, str)
+
+    def test_cuda_visible_devices_env_var_format(self):
+        """Test CUDA_VISIBLE_DEVICES constant is in correct format for env vars."""
+        import torchada
+
+        try:
+            import torch._inductor.autotune_process as autotune_process
+        except ImportError:
+            pytest.skip("torch._inductor.autotune_process not available")
+
+        env_var = autotune_process.CUDA_VISIBLE_DEVICES
+        # Env var should be uppercase and use underscores
+        assert env_var.isupper()
+        assert "_" in env_var
+        # Should end with VISIBLE_DEVICES
+        assert env_var.endswith("VISIBLE_DEVICES")
+
+
 class TestNvtxStub:
     """Test torch.cuda.nvtx stub module."""
 

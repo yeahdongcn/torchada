@@ -590,6 +590,26 @@ def _patch_cpp_extension():
     sys.modules['torch.utils.cpp_extension'] = torch_cpp_ext
 
 
+def _patch_autotune_process():
+    """
+    Patch torch._inductor.autotune_process to use MUSA_VISIBLE_DEVICES on MUSA platform.
+
+    The autotune subprocess uses CUDA_VISIBLE_DEVICES to control GPU visibility.
+    On MUSA platform, we need to use MUSA_VISIBLE_DEVICES instead.
+
+    Reference: https://github.com/pytorch/pytorch/blob/main/torch/_inductor/autotune_process.py#L61
+    """
+    try:
+        import torch._inductor.autotune_process as autotune_process
+    except ImportError:
+        # torch._inductor may not be available in all torch versions
+        return
+
+    # Patch the CUDA_VISIBLE_DEVICES constant to use MUSA_VISIBLE_DEVICES
+    if hasattr(autotune_process, 'CUDA_VISIBLE_DEVICES'):
+        autotune_process.CUDA_VISIBLE_DEVICES = "MUSA_VISIBLE_DEVICES"
+
+
 def apply_patches():
     """
     Apply all necessary patches for CUDA to MUSA translation.
@@ -612,6 +632,7 @@ def apply_patches():
     - torch.cuda.nccl -> torch.musa.mccl
     - torch.amp.autocast(device_type='cuda') -> 'musa'
     - torch.utils.cpp_extension (CUDAExtension, BuildExtension) -> MUSA versions
+    - torch._inductor.autotune_process.CUDA_VISIBLE_DEVICES -> MUSA_VISIBLE_DEVICES
 
     This function should be called once at import time.
     """
@@ -657,6 +678,9 @@ def apply_patches():
 
     # Patch torch.utils.cpp_extension for MUSA compatibility
     _patch_cpp_extension()
+
+    # Patch torch._inductor.autotune_process for MUSA_VISIBLE_DEVICES
+    _patch_autotune_process()
 
     # Patch torch.Tensor.to()
     if hasattr(torch.Tensor, 'to'):
