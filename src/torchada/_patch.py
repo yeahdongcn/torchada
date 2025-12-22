@@ -24,7 +24,7 @@ Usage:
 import functools
 import sys
 from types import ModuleType
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional
 
 import torch
 
@@ -34,7 +34,7 @@ _patched = False
 _original_init_process_group = None
 
 # Registry for patch functions
-_patch_registry: list[Callable[[], None]] = []
+_patch_registry: List[Callable[[], None]] = []
 
 
 def patch_function(func: Callable[[], None]) -> Callable[[], None]:
