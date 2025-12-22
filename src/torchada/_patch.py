@@ -370,6 +370,18 @@ def _patch_torch_cuda_module():
         except ImportError:
             pass
 
+        # Patch missing _lazy_call from torch_musa.core._lazy_init
+        # torch_musa only maps _lazy_init but not _lazy_call
+        # This is needed for code that does: from torch.cuda import _lazy_call
+        # We add it to torch.musa so _CudaModuleWrapper can redirect it
+        try:
+            from torch_musa.core._lazy_init import _lazy_call
+            # Only add if not already present (forward compatible with torch_musa fix)
+            if not hasattr(torch.musa, '_lazy_call'):
+                torch.musa._lazy_call = _lazy_call
+        except ImportError:
+            pass
+
 
 @patch_function
 @requires_import('torch.distributed')

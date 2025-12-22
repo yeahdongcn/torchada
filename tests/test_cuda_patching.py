@@ -133,6 +133,34 @@ class TestTorchCudaModule:
             assert torch.cuda.current_device() == current
 
 
+class TestTorchCudaLazyInit:
+    """Test torch.cuda lazy initialization functions patching."""
+
+    def test_import_lazy_call(self):
+        """Test that _lazy_call can be imported from torch.cuda.
+
+        This is needed because torch_musa only maps _lazy_init but not _lazy_call.
+        torchada patches this to make from torch.cuda import _lazy_call work.
+        """
+        import torchada
+        from torch.cuda import _lazy_call
+        assert _lazy_call is not None
+        assert callable(_lazy_call)
+
+    def test_lazy_call_functionality(self):
+        """Test that _lazy_call works correctly."""
+        import torchada
+        from torch.cuda import _lazy_call
+
+        # _lazy_call should accept a callable and queue it for lazy execution
+        called = []
+        def test_callback():
+            called.append(True)
+
+        # Should not raise
+        _lazy_call(test_callback)
+
+
 class TestTorchCudaAmp:
     """Test torch.cuda.amp module patching."""
 
