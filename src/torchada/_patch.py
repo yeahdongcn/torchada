@@ -470,27 +470,6 @@ def _patch_nccl_module():
         sys.modules['torch.cuda.nccl'] = torch_musa.mccl
 
 
-def _patch_is_cuda_available():
-    """
-    Patch torch.cuda.is_available to return MUSA availability.
-
-    This is a safety net in case the module swap doesn't work perfectly.
-    """
-    # This is now handled by module redirection, but we keep it for reference
-    pass
-
-
-def _patch_torch_version():
-    """
-    Patch torch.version.cuda to return MUSA version on MUSA platform.
-
-    This allows code that checks torch.version.cuda to work on MUSA.
-    """
-    if hasattr(torch.version, 'musa') and torch.version.musa is not None:
-        # Set torch.version.cuda to the MUSA version
-        torch.version.cuda = str(torch.version.musa)
-
-
 def _patch_tensor_is_cuda():
     """
     Patch torch.Tensor.is_cuda property to return True for MUSA tensors.
@@ -619,7 +598,6 @@ def apply_patches():
 
     This includes:
     - torch.device("cuda") -> torch.device("musa")
-    - torch.version.cuda -> MUSA version string
     - torch.cuda.* API -> torch.musa.*
     - torch.cuda.nvtx -> no-op stub
     - torch.cuda.Stream.cuda_stream -> musa_stream
@@ -654,9 +632,6 @@ def apply_patches():
 
     # Patch torch.device to translate cuda to musa
     _patch_torch_device()
-
-    # Patch torch.version.cuda to return MUSA version
-    # _patch_torch_version()
 
     # Patch torch.Tensor.is_cuda to return True for MUSA tensors
     _patch_tensor_is_cuda()
