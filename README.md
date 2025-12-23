@@ -249,7 +249,9 @@ torchada automatically maps CUDA symbols to MUSA equivalents when building exten
 | `#include <cuda/*>` | `#include <musa/*>` |
 | ... | ... |
 
-See `src/torchada/_mapping.py` for the complete mapping table (350+ mappings).
+See `src/torchada/_mapping.py` for the complete mapping table (380+ mappings).
+
+**Note**: Many CUDA constructs like atomic operations (`atomicAdd`, `atomicCAS`), shuffle intrinsics (`__shfl_sync`), and half-precision math (`__float2half`) are identical in MUSA and don't require mapping.
 
 ## Architecture
 
