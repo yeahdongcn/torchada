@@ -276,6 +276,39 @@ def _create_cuda_extension(name: str, sources: List[str], *args, **kwargs):
     return TorchCUDAExtension(name, sources, *args, **kwargs)
 
 
+def _translate_compile_args(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Translate CUDA-style compile args to MUSA-style.
+
+    This function maps:
+    - 'nvcc' key to 'mcc' for MUSA compiler flags
+    - Keeps 'cxx' key as-is for C++ compiler flags
+
+    This allows developers to use standard 'nvcc' key in extra_compile_args
+    and have it work transparently on MUSA platform.
+    """
+    if "extra_compile_args" not in kwargs:
+        return kwargs
+
+    extra_compile_args = kwargs["extra_compile_args"]
+    if not isinstance(extra_compile_args, dict):
+        return kwargs
+
+    # Create a new dict with translated keys
+    new_compile_args = {}
+    for key, value in extra_compile_args.items():
+        if key == "nvcc":
+            # Map 'nvcc' to 'mcc' for MUSA
+            new_compile_args["mcc"] = value
+        else:
+            new_compile_args[key] = value
+
+    # Return a copy of kwargs with updated extra_compile_args
+    new_kwargs = kwargs.copy()
+    new_kwargs["extra_compile_args"] = new_compile_args
+    return new_kwargs
+
+
 def _create_musa_extension(name: str, sources: List[str], *args, **kwargs):
     """Create a MUSA extension using torch_musa's MUSAExtension.
 
@@ -284,9 +317,13 @@ def _create_musa_extension(name: str, sources: List[str], *args, **kwargs):
     1. Patching musa_ext._is_musa_file to recognize .cu/.cuh as valid MUSA files
     2. Patching musa_sp.EXT_REPLACED_MAPPING to convert .cu/.cuh to .mu/.muh
     3. Patching musa_sp._MAPPING_RULE to convert CUDA symbols to MUSA in source code
+    4. Translating 'nvcc' compile args key to 'mcc' for MUSA compiler
     """
     # Ensure patches are applied
     _apply_musa_patches()
+
+    # Translate 'nvcc' to 'mcc' in extra_compile_args
+    kwargs = _translate_compile_args(kwargs)
 
     try:
         import torch_musa.utils.musa_extension as musa_ext
@@ -305,8 +342,12 @@ def _get_build_extension_class():
     Get the BuildExtension class for the current platform.
 
     On MUSA platform, returns a custom class that:
-    1. Uses SimplePorting to convert CUDA sources to MUSA in run()
+    1. Uses SimplePorting to convert CUDA sources to MUSA in run() (like torch's HIPIFY)
     2. Registers .cu/.cuh as valid source extensions in build_extensions()
+    3. Provides extensible mapping rules via get_mapping_rule() method
+
+    The porting process is automatic and transparent - developers use csrc/*.cu paths
+    and the build system handles conversion to csrc_musa/*.cu internally.
     """
     platform = detect_platform()
 
@@ -317,62 +358,181 @@ def _get_build_extension_class():
             import torch_musa.utils.musa_extension as musa_ext
             import torch_musa.utils.simple_porting as musa_sp
 
+            # Patch _is_musa_file to also recognize .cu/.cuh files as MUSA sources
+            # This allows keeping original CUDA file extensions while still compiling
+            # them with the MUSA compiler (mcc with -x musa flag)
+            _original_is_musa_file = musa_ext._is_musa_file
+
+            def _patched_is_musa_file(path: str) -> bool:
+                """Check if a file is a MUSA source file (including .cu/.cuh)."""
+                ext = os.path.splitext(path)[1].lower()
+                # Include .cu/.cuh in addition to .mu/.muh
+                if ext in [".cu", ".cuh"]:
+                    return True
+                return _original_is_musa_file(path)
+
+            musa_ext._is_musa_file = _patched_is_musa_file
+
             class _MUSABuildExtension(musa_ext.BuildExtension):
                 """
                 Custom BuildExtension that handles CUDA->MUSA source porting.
 
-                Following the sglang pattern:
-                - run(): Uses SimplePorting to convert source directories
+                This class works like torch's HIPIFY for ROCm:
+                - run(): Automatically ports CUDA sources to MUSA using SimplePorting
                 - build_extensions(): Registers .cu/.cuh as valid extensions
+                - get_mapping_rule(): Returns mapping rules (override in subclass to extend)
+
+                Subclasses can override get_mapping_rule() to add project-specific mappings:
+
+                    class MyBuildExt(_MUSABuildExtension):
+                        def get_mapping_rule(self):
+                            base_rules = super().get_mapping_rule()
+                            return {
+                                **base_rules,
+                                "my_cuda_func": "my_musa_func",
+                            }
                 """
 
-                # Track directories that have been ported
+                # Track directories that have been ported (class-level for persistence)
                 _ported_dirs = set()
+
+                def get_mapping_rule(self):
+                    """
+                    Get the CUDA->MUSA mapping rules for source porting.
+
+                    Override this method in subclasses to add project-specific mappings.
+                    Call super().get_mapping_rule() and merge with additional rules.
+
+                    Returns:
+                        dict: Mapping from CUDA symbols to MUSA equivalents
+                    """
+                    return _MAPPING_RULE.copy()
 
                 def build_extensions(self):
                     # Register .cu, .cuh as valid source extensions
                     self.compiler.src_extensions += [".cu", ".cuh"]
                     super().build_extensions()
 
+                def _port_directory(self, source_dir, mapping_rule=None):
+                    """
+                    Port a directory containing CUDA sources to MUSA.
+
+                    Args:
+                        source_dir: Path to directory containing CUDA sources
+                        mapping_rule: Optional custom mapping rules (uses get_mapping_rule() if None)
+
+                    Returns:
+                        str: Path to the ported directory (source_dir + "_musa")
+                    """
+                    if mapping_rule is None:
+                        mapping_rule = self.get_mapping_rule()
+
+                    source_dir = os.path.abspath(source_dir)
+                    if source_dir not in self._ported_dirs:
+                        musa_sp.SimplePorting(
+                            cuda_dir_path=source_dir, mapping_rule=mapping_rule
+                        ).run()
+                        self._ported_dirs.add(source_dir)
+
+                    return source_dir + "_musa"
+
+                def _convert_source_path(self, source):
+                    """
+                    Convert a CUDA source path to its ported MUSA equivalent.
+
+                    Args:
+                        source: Original source file path (e.g., "csrc/kernel.cu")
+
+                    Returns:
+                        tuple: (converted_path, needs_porting)
+                            - converted_path: Path to ported file (e.g., "csrc_musa/kernel.cu")
+                            - needs_porting: True if the source directory needs porting
+                    """
+                    source_path = os.path.abspath(source)
+                    source_dir = os.path.dirname(source_path)
+                    source_file = os.path.basename(source_path)
+                    base_name, ext_name = os.path.splitext(source_file)
+                    ext_name_lower = ext_name.lower()
+
+                    # Port all source files that may contain CUDA references:
+                    # - .cu/.cuh: CUDA source/header files
+                    # - .cc/.cpp/.cxx: C++ files that may reference CUDA symbols
+                    if ext_name_lower in [".cu", ".cuh", ".cc", ".cpp", ".cxx"]:
+                        # Get the ported extension (kept same with our EXT_REPLACED_MAPPING)
+                        new_ext = EXT_REPLACED_MAPPING.get(ext_name_lower[1:], ext_name_lower[1:])
+                        musa_dir = source_dir + "_musa"
+                        new_source = os.path.join(musa_dir, base_name + "." + new_ext)
+                        return new_source, True
+                    else:
+                        return source, False
+
                 def run(self):
-                    # Port all CUDA source directories before building
+                    """
+                    Run the build process with automatic CUDA->MUSA porting.
+
+                    This method:
+                    1. Identifies CUDA source directories from extension sources
+                    2. Ports each directory using SimplePorting (like torch's HIPIFY)
+                    3. Updates source paths to point to ported files
+                    4. Ports include directories as well
+                    5. Calls parent run() to perform actual compilation
+                    """
+                    mapping_rule = self.get_mapping_rule()
+
                     for ext in self.extensions:
                         new_sources = []
                         dirs_to_port = set()
 
+                        # First pass: identify directories that need porting
                         for source in ext.sources:
-                            source_path = os.path.abspath(source)
-                            source_dir = os.path.dirname(source_path)
-                            source_file = os.path.basename(source_path)
-                            base_name, ext_name = os.path.splitext(source_file)
-                            ext_name = ext_name.lower()
-
-                            if ext_name in [".cu", ".cuh"]:
-                                # Track this directory for porting
+                            new_source, needs_porting = self._convert_source_path(source)
+                            new_sources.append(new_source)
+                            if needs_porting:
+                                source_dir = os.path.dirname(os.path.abspath(source))
                                 dirs_to_port.add(source_dir)
-                                # Update source path to point to _musa directory
-                                # SimplePorting converts .cu -> .mu, .cuh -> .muh
-                                musa_dir = source_dir + "_musa"
-                                new_ext = EXT_REPLACED_MAPPING.get(
-                                    ext_name[1:], ext_name[1:]
-                                )
-                                new_source = os.path.join(
-                                    musa_dir, base_name + "." + new_ext
-                                )
-                                new_sources.append(new_source)
-                            else:
-                                new_sources.append(source)
 
-                        # Port each unique directory using our custom mapping rules
+                        # Port each unique directory
                         for cuda_dir in dirs_to_port:
-                            if cuda_dir not in self._ported_dirs:
-                                musa_sp.SimplePorting(
-                                    cuda_dir_path=cuda_dir, mapping_rule=_MAPPING_RULE
-                                ).run()
-                                self._ported_dirs.add(cuda_dir)
+                            self._port_directory(cuda_dir, mapping_rule)
 
                         # Update extension sources to point to ported files
                         ext.sources = new_sources
+
+                        # Port include directories and update include_dirs
+                        # Only port project-local directories, not system paths
+                        if hasattr(ext, "include_dirs") and ext.include_dirs:
+                            new_include_dirs = []
+                            for inc_dir in ext.include_dirs:
+                                inc_dir_abs = os.path.abspath(inc_dir)
+                                # Skip system directories - only port project-local dirs
+                                # System dirs typically start with /usr, /opt, or site-packages
+                                is_system_dir = (
+                                    inc_dir_abs.startswith("/usr/")
+                                    or inc_dir_abs.startswith("/opt/")
+                                    or "site-packages" in inc_dir_abs
+                                    or "dist-packages" in inc_dir_abs
+                                )
+                                if os.path.isdir(inc_dir_abs) and not is_system_dir:
+                                    # Check if directory might contain CUDA headers (recursively)
+                                    has_cuda_headers = False
+                                    try:
+                                        for root, dirs, files in os.walk(inc_dir_abs):
+                                            for f in files:
+                                                if f.endswith((".h", ".hpp", ".cuh", ".cu")):
+                                                    has_cuda_headers = True
+                                                    break
+                                            if has_cuda_headers:
+                                                break
+                                    except OSError:
+                                        pass
+
+                                    if has_cuda_headers:
+                                        ported_dir = self._port_directory(inc_dir_abs, mapping_rule)
+                                        # Add ported dir first so ported headers take precedence
+                                        if os.path.isdir(ported_dir):
+                                            new_include_dirs.append(ported_dir)
+                                new_include_dirs.append(inc_dir_abs)
+                            ext.include_dirs = new_include_dirs
 
                     super().run()
 
