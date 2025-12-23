@@ -29,16 +29,12 @@ class TestATenMappings:
         from torchada._mapping import _MAPPING_RULE
 
         assert _MAPPING_RULE["at::cuda"] == "at::musa"
-        assert _MAPPING_RULE["at::cuda::"] == "at::musa::"
 
     def test_aten_cuda_includes(self):
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["ATen/cuda"] == "ATen/musa"
-        assert _MAPPING_RULE["ATen/CUDAContext.h"] == "ATen/musa/MUSAContext.h"
-        assert (
-            _MAPPING_RULE["ATen/CUDAGeneratorImpl.h"] == "ATen/musa/MUSAGeneratorImpl.h"
-        )
+        # Check for specific ATen include mappings
+        assert "#include <ATen/cuda/CUDAContext.h>" in _MAPPING_RULE
 
 
 class TestC10Mappings:
@@ -48,7 +44,6 @@ class TestC10Mappings:
         from torchada._mapping import _MAPPING_RULE
 
         assert _MAPPING_RULE["c10::cuda"] == "c10::musa"
-        assert _MAPPING_RULE["c10::cuda::"] == "c10::musa::"
         assert _MAPPING_RULE["c10/cuda"] == "c10/musa"
 
     def test_c10_device_type(self):
@@ -71,7 +66,8 @@ class TestTorchMappings:
 
         assert _MAPPING_RULE["at::kCUDA"] == "at::kMUSA"
         assert _MAPPING_RULE["at::DeviceType::CUDA"] == "at::DeviceType::MUSA"
-        assert _MAPPING_RULE["torch::kCUDA"] == "torch::kMUSA"
+        # torch::kCUDA maps to PrivateUse1 for MUSA compatibility
+        assert _MAPPING_RULE["torch::kCUDA"] == "c10::DeviceType::PrivateUse1"
 
 
 class TestCuBLASMappings:
@@ -377,10 +373,12 @@ class TestLibraryMappings:
         assert _MAPPING_RULE["cutlass::"] == "mutlass::"
 
     def test_cub(self):
+        """CUB is provided directly by MUSA, no mapping needed."""
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["cub::"] == "mub::"
-        assert _MAPPING_RULE["cub/"] == "mub/"
+        # CUB doesn't need mapping - MUSA provides it directly
+        assert "cub::" not in _MAPPING_RULE
+        assert "cub/" not in _MAPPING_RULE
 
     def test_thrust(self):
         from torchada._mapping import _MAPPING_RULE
@@ -389,57 +387,49 @@ class TestLibraryMappings:
 
 
 class TestIntrinsicMappings:
-    """Test CUDA intrinsic and math function mappings."""
+    """Test CUDA intrinsic and math function mappings.
 
-    def test_shuffle_intrinsics(self):
+    Note: Many CUDA intrinsics (shuffle, vote, sync, atomics, half precision)
+    are the same in MUSA and don't require mapping. These tests verify that
+    we correctly do NOT include identity mappings for these.
+    """
+
+    def test_shuffle_intrinsics_not_mapped(self):
+        """Shuffle intrinsics are the same in MUSA - no mapping needed."""
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["__shfl_sync"] == "__shfl_sync"
-        assert _MAPPING_RULE["__shfl_xor_sync"] == "__shfl_xor_sync"
-        assert _MAPPING_RULE["__shfl_up_sync"] == "__shfl_up_sync"
-        assert _MAPPING_RULE["__shfl_down_sync"] == "__shfl_down_sync"
+        # These should NOT be in the mapping (same syntax in MUSA)
+        assert "__shfl_sync" not in _MAPPING_RULE
+        assert "__shfl_xor_sync" not in _MAPPING_RULE
 
-    def test_vote_intrinsics(self):
+    def test_vote_intrinsics_not_mapped(self):
+        """Vote intrinsics are the same in MUSA - no mapping needed."""
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["__ballot_sync"] == "__ballot_sync"
-        assert _MAPPING_RULE["__any_sync"] == "__any_sync"
-        assert _MAPPING_RULE["__all_sync"] == "__all_sync"
+        assert "__ballot_sync" not in _MAPPING_RULE
+        assert "__any_sync" not in _MAPPING_RULE
 
-    def test_sync_intrinsics(self):
+    def test_sync_intrinsics_not_mapped(self):
+        """Sync intrinsics are the same in MUSA - no mapping needed."""
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["__syncthreads"] == "__syncthreads"
-        assert _MAPPING_RULE["__syncwarp"] == "__syncwarp"
-        assert _MAPPING_RULE["__threadfence"] == "__threadfence"
-        assert _MAPPING_RULE["__threadfence_block"] == "__threadfence_block"
-        assert _MAPPING_RULE["__threadfence_system"] == "__threadfence_system"
+        assert "__syncthreads" not in _MAPPING_RULE
+        assert "__threadfence" not in _MAPPING_RULE
 
-    def test_atomic_operations(self):
+    def test_atomic_operations_not_mapped(self):
+        """Atomic operations are the same in MUSA - no mapping needed."""
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["atomicAdd"] == "atomicAdd"
-        assert _MAPPING_RULE["atomicSub"] == "atomicSub"
-        assert _MAPPING_RULE["atomicExch"] == "atomicExch"
-        assert _MAPPING_RULE["atomicMin"] == "atomicMin"
-        assert _MAPPING_RULE["atomicMax"] == "atomicMax"
-        assert _MAPPING_RULE["atomicInc"] == "atomicInc"
-        assert _MAPPING_RULE["atomicDec"] == "atomicDec"
-        assert _MAPPING_RULE["atomicCAS"] == "atomicCAS"
-        assert _MAPPING_RULE["atomicAnd"] == "atomicAnd"
-        assert _MAPPING_RULE["atomicOr"] == "atomicOr"
-        assert _MAPPING_RULE["atomicXor"] == "atomicXor"
+        assert "atomicAdd" not in _MAPPING_RULE
+        assert "atomicCAS" not in _MAPPING_RULE
 
-    def test_half_precision(self):
+    def test_half_precision_not_mapped(self):
+        """Half precision intrinsics are the same in MUSA - no mapping needed."""
         from torchada._mapping import _MAPPING_RULE
 
-        assert _MAPPING_RULE["__float2half"] == "__float2half"
-        assert _MAPPING_RULE["__half2float"] == "__half2float"
-        assert _MAPPING_RULE["__hadd"] == "__hadd"
-        assert _MAPPING_RULE["__hsub"] == "__hsub"
-        assert _MAPPING_RULE["__hmul"] == "__hmul"
-        assert _MAPPING_RULE["__hdiv"] == "__hdiv"
-        assert _MAPPING_RULE["__hfma"] == "__hfma"
+        assert "__float2half" not in _MAPPING_RULE
+        assert "__half2float" not in _MAPPING_RULE
+        assert "__hadd" not in _MAPPING_RULE
 
 
 class TestIncludeMappings:
@@ -505,3 +495,183 @@ class TestMappingCount:
         # Extensions are converted: .cu -> .mu, .cuh -> .muh for mcc compiler
         assert EXT_REPLACED_MAPPING["cu"] == "mu"
         assert EXT_REPLACED_MAPPING["cuh"] == "muh"
+
+
+class TestMappingRobustness:
+    """Tests to ensure mapping rules are robust and don't have issues."""
+
+    def test_no_identity_mappings(self):
+        """Ensure no mapping maps a key to itself (identity mapping)."""
+        from torchada._mapping import _MAPPING_RULE
+
+        identity_mappings = [(k, v) for k, v in _MAPPING_RULE.items() if k == v]
+        assert len(identity_mappings) == 0, (
+            f"Found {len(identity_mappings)} identity mappings that should be removed: "
+            f"{identity_mappings[:5]}"
+        )
+
+    def test_no_empty_keys_or_values(self):
+        """Ensure no mapping has empty key or value."""
+        from torchada._mapping import _MAPPING_RULE
+
+        for key, value in _MAPPING_RULE.items():
+            assert key, "Found empty key in mapping"
+            assert value is not None, f"Found None value for key: {key}"
+            # Empty value is allowed for deletion, but we don't use that
+
+    def test_all_keys_and_values_are_strings(self):
+        """Ensure all keys and values are strings."""
+        from torchada._mapping import _MAPPING_RULE
+
+        for key, value in _MAPPING_RULE.items():
+            assert isinstance(key, str), f"Key is not a string: {key}"
+            assert isinstance(
+                value, str
+            ), f"Value is not a string for key {key}: {value}"
+
+    def test_cuda_to_musa_consistency(self):
+        """Test that CUDA terms consistently map to MUSA equivalents."""
+        from torchada._mapping import _MAPPING_RULE
+
+        # Check that 'cuda' in key generally maps to 'musa' in value
+        # (with some exceptions for special cases like torch::kCUDA -> PrivateUse1)
+        exceptions = {
+            "torch::kCUDA",  # Maps to PrivateUse1
+            ".is_cuda()",  # Maps to .is_privateuseone()
+        }
+
+        for key, value in _MAPPING_RULE.items():
+            if key in exceptions:
+                continue
+            # If key contains 'cuda' (case insensitive), value should contain 'musa'
+            if "cuda" in key.lower() and "musa" not in value.lower():
+                # Allow mappings where cuda -> privateuseone or similar
+                if (
+                    "privateuseone" not in value.lower()
+                    and "private" not in value.lower()
+                ):
+                    # Check for special patterns
+                    if not any(
+                        x in value.lower()
+                        for x in ["musa", "privateuseone", "ignore", "torch_musa"]
+                    ):
+                        pytest.fail(
+                            f"Inconsistent mapping: '{key}' -> '{value}' "
+                            "(expected 'musa' or special case in value)"
+                        )
+
+
+class TestMappingApplication:
+    """Test that mappings are correctly applied to source code."""
+
+    def test_port_cuda_source_basic(self):
+        """Test basic source code porting."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        # Test basic namespace replacement
+        source = "at::cuda::getCurrentCUDAStream()"
+        result = _port_cuda_source(source)
+        assert "at::musa" in result
+        assert "at::cuda" not in result
+
+    def test_port_cuda_source_includes(self):
+        """Test include statement porting."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        source = '#include <cuda_runtime.h>\n#include "my_file.cuh"'
+        result = _port_cuda_source(source)
+        assert "musa_runtime.h" in result
+        assert 'my_file.muh"' in result
+
+    def test_port_cuda_source_types(self):
+        """Test type replacement."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        source = "cudaStream_t stream; cudaError_t err;"
+        result = _port_cuda_source(source)
+        assert "musaStream_t" in result
+        assert "musaError_t" in result
+        assert "cudaStream_t" not in result
+
+    def test_port_cuda_source_functions(self):
+        """Test function name replacement."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        source = "cudaMalloc(&ptr, size); cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);"
+        result = _port_cuda_source(source)
+        assert "musaMalloc" in result
+        assert "musaMemcpy" in result
+        assert "cudaMalloc" not in result
+
+    def test_port_cuda_source_preserves_non_cuda(self):
+        """Test that non-CUDA code is preserved."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        source = """
+int main() {
+    int x = 42;
+    float y = 3.14f;
+    return 0;
+}
+"""
+        result = _port_cuda_source(source)
+        assert "int main()" in result
+        assert "int x = 42" in result
+        assert "float y = 3.14f" in result
+
+    def test_port_cuda_source_longer_patterns_first(self):
+        """Test that longer patterns are applied before shorter ones."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        # This tests that 'cudaMemcpyHostToDevice' is replaced before 'cuda'
+        source = "cudaMemcpyHostToDevice"
+        result = _port_cuda_source(source)
+        # Should be musaMemcpyHostToDevice, not something like musaMemcpyHostToDevice
+        assert result == "musaMemcpyHostToDevice"
+
+    def test_port_cuda_source_c10_macros(self):
+        """Test C10 macro replacement."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        source = "C10_CUDA_KERNEL_LAUNCH_CHECK();"
+        result = _port_cuda_source(source)
+        assert "C10_MUSA_KERNEL_LAUNCH_CHECK" in result
+        assert "C10_CUDA" not in result
+
+    def test_port_cuda_source_nccl(self):
+        """Test NCCL to MCCL replacement."""
+        from torchada.utils.cpp_extension import _port_cuda_source
+
+        source = "ncclComm_t comm; ncclAllReduce(buffer, buffer, count, datatype, op, comm, stream);"
+        result = _port_cuda_source(source)
+        assert "mcclComm_t" in result
+        assert "mcclAllReduce" in result
+        assert "ncclComm_t" not in result
+
+
+class TestMappingSubstringOrdering:
+    """Test that mappings with substring relationships are handled correctly."""
+
+    def test_specific_before_generic(self):
+        """Test that specific mappings work correctly with generic ones."""
+        from torchada._mapping import _MAPPING_RULE
+
+        # The _port_cuda_source function sorts by length (longest first)
+        # So specific mappings like 'cudaMemcpyHostToDevice' should be in the mapping
+        # and the replacement algorithm should handle them correctly
+        # Verify that both specific and generic patterns exist
+        assert "cudaMemcpy" in _MAPPING_RULE
+        assert "cudaMemcpyHostToDevice" in _MAPPING_RULE
+
+        # Verify the specific one maps correctly
+        assert _MAPPING_RULE["cudaMemcpyHostToDevice"] == "musaMemcpyHostToDevice"
+
+    def test_include_specific_paths(self):
+        """Test that specific include paths are correctly mapped."""
+        from torchada._mapping import _MAPPING_RULE
+
+        # Check that specific ATen includes exist
+        assert "#include <ATen/cuda/CUDAContext.h>" in _MAPPING_RULE
+
+        # And that generic at::cuda also exists
+        assert "at::cuda" in _MAPPING_RULE

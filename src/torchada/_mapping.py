@@ -21,12 +21,12 @@ EXT_REPLACED_MAPPING = {
 # Comprehensive CUDA to MUSA symbol mapping
 _MAPPING_RULE = {
     # ATen header mappings (use torch_musa specific paths)
-    '#include <ATen/cuda/Atomic.cuh>': '#include "torch_musa/share/generated_cuda_compatible/include/ATen/musa/Atomic.muh"',
-    '#include <ATen/cuda/CUDAContext.h>': '#include "torch_musa/csrc/aten/musa/MUSAContext.h"',
-    '#include <ATen/cuda/CUDADataType.h>': '#include "torch_musa/csrc/aten/musa/MUSADtype.muh"',
-    '#include <ATen/cuda/CUDAGeneratorImpl.h>': '#include "torch_musa/csrc/aten/musa/CUDAGeneratorImpl.h"',
-    '#include <ATen/cuda/detail/UnpackRaw.cuh>': '#include "torch_musa/csrc/aten/musa/UnpackRaw.muh"',
-    '#include <ATen/cuda/Exceptions.h>': '#include "torch_musa/csrc/aten/musa/Exceptions.h"',
+    "#include <ATen/cuda/Atomic.cuh>": '#include "torch_musa/share/generated_cuda_compatible/include/ATen/musa/Atomic.muh"',
+    "#include <ATen/cuda/CUDAContext.h>": '#include "torch_musa/csrc/aten/musa/MUSAContext.h"',
+    "#include <ATen/cuda/CUDADataType.h>": '#include "torch_musa/csrc/aten/musa/MUSADtype.muh"',
+    "#include <ATen/cuda/CUDAGeneratorImpl.h>": '#include "torch_musa/csrc/aten/musa/CUDAGeneratorImpl.h"',
+    "#include <ATen/cuda/detail/UnpackRaw.cuh>": '#include "torch_musa/csrc/aten/musa/UnpackRaw.muh"',
+    "#include <ATen/cuda/Exceptions.h>": '#include "torch_musa/csrc/aten/musa/Exceptions.h"',
     "at::cuda": "at::musa",
     "torch::kCUDA": "torch::kMUSA",
     # File extension mappings for include statements (.cuh -> .muh)
@@ -34,9 +34,9 @@ _MAPPING_RULE = {
     '.cuh"': '.muh"',
     ".cuh>": ".muh>",
     # C10 header mappings (use torch_musa specific paths)
-    '#include <c10/cuda/CUDAException.h>': '#include "torch_musa/csrc/core/MUSAException.h"',
-    '#include <c10/cuda/CUDAGuard.h>': '#include "torch_musa/csrc/core/MUSAGuard.h"',
-    '#include <c10/cuda/CUDAStream.h>': '#include "torch_musa/csrc/core/MUSAStream.h"',
+    "#include <c10/cuda/CUDAException.h>": '#include "torch_musa/csrc/core/MUSAException.h"',
+    "#include <c10/cuda/CUDAGuard.h>": '#include "torch_musa/csrc/core/MUSAGuard.h"',
+    "#include <c10/cuda/CUDAStream.h>": '#include "torch_musa/csrc/core/MUSAStream.h"',
     "c10::cuda": "c10::musa",
     # C10 CUDA macros
     "C10_CUDA_KERNEL_LAUNCH_CHECK": "C10_MUSA_KERNEL_LAUNCH_CHECK",
@@ -174,8 +174,7 @@ _MAPPING_RULE = {
     "cudaMemcpyDeviceToDevice": "musaMemcpyDeviceToDevice",
     "cudaMemcpyHostToHost": "musaMemcpyHostToHost",
     # Data types
-    "__half": "__half",  # Keep as-is, MUSA supports __half
-    "half": "half",
+    # Note: __half and half are the same in MUSA, no mapping needed
     "__nv_bfloat16": "__mt_bfloat16",
     "__nv_bfloat162": "__mt_bfloat162",
     "nv_bfloat16": "__mt_bfloat16",
@@ -210,9 +209,7 @@ _MAPPING_RULE = {
     "CUTLASS": "MUTLASS",
     "cutlass/": "mutlass/",
     "cutlass::": "mutlass::",
-    # CUB - MUSA provides cub directly, no conversion needed
-    "cub::": "cub::",
-    "cub/": "cub/",
+    # CUB - MUSA provides cub directly, no conversion needed (no mapping needed)
     # Thrust
     "thrust::cuda": "thrust::musa",
     # NCCL -> MCCL
@@ -245,9 +242,7 @@ _MAPPING_RULE = {
     "cufftExecC2C": "mufftExecC2C",
     "cufftExecR2C": "mufftExecR2C",
     "cufftExecC2R": "mufftExecC2R",
-    # CUDA kernel launch syntax
-    "<<<": "<<<",  # Keep as-is, MUSA uses same syntax
-    ">>>": ">>>",
+    # CUDA kernel launch syntax - same in MUSA, no mapping needed
     # CUDA device attributes
     "cudaDevAttrMaxThreadsPerBlock": "musaDevAttrMaxThreadsPerBlock",
     "cudaDevAttrMaxBlockDimX": "musaDevAttrMaxBlockDimX",
@@ -337,8 +332,7 @@ _MAPPING_RULE = {
     "cudaDestroyTextureObject": "musaDestroyTextureObject",
     "cudaCreateSurfaceObject": "musaCreateSurfaceObject",
     "cudaDestroySurfaceObject": "musaDestroySurfaceObject",
-    # CUDA cooperative groups (if supported)
-    "cooperative_groups": "cooperative_groups",
+    # CUDA cooperative groups - same in MUSA, no mapping needed
     # Additional cuBLAS functions
     "cublasSetMathMode": "mublasSetMathMode",
     "cublasGetMathMode": "mublasGetMathMode",
@@ -363,13 +357,8 @@ _MAPPING_RULE = {
     "cudnnDestroyTensorDescriptor": "mudnnDestroyTensorDescriptor",
     "cudnnSetTensor4dDescriptor": "mudnnSetTensor4dDescriptor",
     "cudnnSetTensorNdDescriptor": "mudnnSetTensorNdDescriptor",
-    # Flash attention and transformer related (common in vLLM/SGLang)
-    "flash_attn": "flash_attn",  # Usually kept as-is
-    "FlashAttnFunc": "FlashAttnFunc",
-    "FlashAttnQKVPackedFunc": "FlashAttnQKVPackedFunc",
-    # Paged attention (vLLM specific)
-    "paged_attention_v1": "paged_attention_v1",
-    "paged_attention_v2": "paged_attention_v2",
+    # Flash attention and transformer related - same names, no mapping needed
+    # Paged attention (vLLM specific) - same names, no mapping needed
     # Additional NCCL functions
     "ncclCommInitRank": "mcclCommInitRank",
     "ncclCommInitAll": "mcclCommInitAll",
@@ -388,53 +377,23 @@ _MAPPING_RULE = {
     "ncclRecv": "mcclRecv",
     "ncclGetUniqueId": "mcclGetUniqueId",
     "ncclUniqueId": "mcclUniqueId",
-    # CUDA math intrinsics
-    "__shfl_sync": "__shfl_sync",  # Usually same syntax
-    "__shfl_xor_sync": "__shfl_xor_sync",
-    "__shfl_up_sync": "__shfl_up_sync",
-    "__shfl_down_sync": "__shfl_down_sync",
-    "__ballot_sync": "__ballot_sync",
-    "__any_sync": "__any_sync",
-    "__all_sync": "__all_sync",
-    "__syncthreads": "__syncthreads",
-    "__syncwarp": "__syncwarp",
-    "__threadfence": "__threadfence",
-    "__threadfence_block": "__threadfence_block",
-    "__threadfence_system": "__threadfence_system",
-    # Atomic operations
-    "atomicAdd": "atomicAdd",
-    "atomicSub": "atomicSub",
-    "atomicExch": "atomicExch",
-    "atomicMin": "atomicMin",
-    "atomicMax": "atomicMax",
-    "atomicInc": "atomicInc",
-    "atomicDec": "atomicDec",
-    "atomicCAS": "atomicCAS",
-    "atomicAnd": "atomicAnd",
-    "atomicOr": "atomicOr",
-    "atomicXor": "atomicXor",
-    # CUDA math functions
-    "__float2half": "__float2half",
-    "__half2float": "__half2float",
-    "__float2half_rn": "__float2half_rn",
-    "__float22half2_rn": "__float22half2_rn",
-    "__half22float2": "__half22float2",
-    "__hadd": "__hadd",
-    "__hsub": "__hsub",
-    "__hmul": "__hmul",
-    "__hdiv": "__hdiv",
-    "__hfma": "__hfma",
-    "__hadd2": "__hadd2",
-    "__hsub2": "__hsub2",
-    "__hmul2": "__hmul2",
-    "__hfma2": "__hfma2",
+    # CUDA math intrinsics - same in MUSA, no mapping needed
+    # (__shfl_sync, __shfl_xor_sync, __shfl_up_sync, __shfl_down_sync,
+    #  __ballot_sync, __any_sync, __all_sync, __syncthreads, __syncwarp,
+    #  __threadfence, __threadfence_block, __threadfence_system)
+    # Atomic operations - same in MUSA, no mapping needed
+    # (atomicAdd, atomicSub, atomicExch, atomicMin, atomicMax, atomicInc,
+    #  atomicDec, atomicCAS, atomicAnd, atomicOr, atomicXor)
+    # CUDA math functions - same in MUSA, no mapping needed
+    # (__float2half, __half2float, __float2half_rn, __float22half2_rn,
+    #  __half22float2, __hadd, __hsub, __hmul, __hdiv, __hfma,
+    #  __hadd2, __hsub2, __hmul2, __hfma2)
     # Common macros
     "CUDA_KERNEL_LOOP": "MUSA_KERNEL_LOOP",
     "CUDA_1D_KERNEL_LOOP": "MUSA_1D_KERNEL_LOOP",
     "CUDA_2D_KERNEL_LOOP": "MUSA_2D_KERNEL_LOOP",
     "CUDA_NUM_THREADS": "MUSA_NUM_THREADS",
-    "GET_BLOCKS": "GET_BLOCKS",
-    "DIVUP": "DIVUP",
+    # GET_BLOCKS and DIVUP are common macros that don't need mapping
     # PyTorch C++ API cuda utilities
     "torch::cuda::getCurrentCUDAStream": "torch::musa::getCurrentMUSAStream",
     "torch::cuda::getDefaultCUDAStream": "torch::musa::getDefaultMUSAStream",
@@ -533,4 +492,3 @@ __device__ __forceinline__ float fast_rcp(float x) { return __frcp_rn(x); }
     # Remove __restrict__ from RankData.ptrs array
     "const void* __restrict__ ptrs[8]": "const void* ptrs[8]",
 }
-
