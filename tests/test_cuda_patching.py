@@ -530,6 +530,24 @@ class TestStreamAndEvent:
 
         assert hasattr(torch.cuda, "stream")
 
+    def test_stream_context_class(self):
+        """Test torch.cuda.StreamContext is available on MUSA.
+
+        StreamContext is not at top level of torch_musa, it's in
+        torch_musa.core.stream.StreamContext, so we need special handling.
+        """
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            # StreamContext should be accessible via torch.cuda.StreamContext
+            assert hasattr(torch.cuda, "StreamContext")
+            # It should be the MUSA StreamContext class
+            import torch_musa.core.stream
+
+            assert torch.cuda.StreamContext is torch_musa.core.stream.StreamContext
+
     def test_stream_cuda_stream_property(self):
         """Test stream.cuda_stream returns same value as stream.musa_stream on MUSA."""
         import torch

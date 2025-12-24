@@ -315,6 +315,12 @@ class _CudaModuleWrapper(ModuleType):
     # Attributes that should NOT be redirected to torch.musa
     _NO_REDIRECT = {"is_available"}
 
+    # Special attribute mappings for attributes not at top level of torch_musa
+    # Maps attribute name -> dot-separated path within torch_musa
+    _SPECIAL_ATTRS = {
+        "StreamContext": "core.stream.StreamContext",
+    }
+
     def __init__(self, original_cuda, musa_module):
         super().__init__("torch.cuda")
         self._original_cuda = original_cuda
@@ -324,6 +330,14 @@ class _CudaModuleWrapper(ModuleType):
         # Keep original is_available behavior
         if name in self._NO_REDIRECT:
             return getattr(self._original_cuda, name)
+
+        # Handle special attributes that need nested lookup
+        if name in self._SPECIAL_ATTRS:
+            obj = self._musa_module
+            for part in self._SPECIAL_ATTRS[name].split("."):
+                obj = getattr(obj, part)
+            return obj
+
         # Redirect everything else to torch.musa
         return getattr(self._musa_module, name)
 
