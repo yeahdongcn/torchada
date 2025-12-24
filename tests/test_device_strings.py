@@ -212,3 +212,230 @@ class TestFactoryFunctions:
                 if "MUSA" in str(e) or "invalid device function" in str(e):
                     pytest.skip(f"MUSA driver issue: {e}")
                 raise
+
+
+class TestTranslateDeviceFunction:
+    """Unit tests for the _translate_device function."""
+
+    def test_translate_device_none(self):
+        """Test that None is passed through unchanged."""
+        from torchada._patch import _translate_device
+
+        assert _translate_device(None) is None
+
+    def test_translate_device_cuda_string(self):
+        """Test 'cuda' string translation."""
+        import torchada
+        from torchada._patch import _translate_device
+
+        result = _translate_device("cuda")
+        if torchada.is_musa_platform():
+            assert result == "musa"
+        else:
+            assert result == "cuda"
+
+    def test_translate_device_cuda_with_index(self):
+        """Test 'cuda:0' and 'cuda:1' string translation."""
+        import torchada
+        from torchada._patch import _translate_device
+
+        result0 = _translate_device("cuda:0")
+        result1 = _translate_device("cuda:1")
+
+        if torchada.is_musa_platform():
+            assert result0 == "musa:0"
+            assert result1 == "musa:1"
+        else:
+            assert result0 == "cuda:0"
+            assert result1 == "cuda:1"
+
+    def test_translate_device_cpu_unchanged(self):
+        """Test that 'cpu' is unchanged."""
+        from torchada._patch import _translate_device
+
+        assert _translate_device("cpu") == "cpu"
+
+    def test_translate_device_musa_unchanged(self):
+        """Test that 'musa' is unchanged."""
+        from torchada._patch import _translate_device
+
+        assert _translate_device("musa") == "musa"
+        assert _translate_device("musa:0") == "musa:0"
+
+    def test_translate_device_integer_unchanged(self):
+        """Test that integer device IDs are unchanged."""
+        from torchada._patch import _translate_device
+
+        assert _translate_device(0) == 0
+        assert _translate_device(1) == 1
+
+    def test_translate_device_torch_device_cuda(self):
+        """Test torch.device('cuda') translation."""
+        import torch
+
+        import torchada
+
+        # Get original torch.device class
+        from torchada._patch import _original_torch_device, _translate_device
+
+        if _original_torch_device is None:
+            # Not patched yet, use current torch.device
+            device_cls = torch.device
+        else:
+            device_cls = _original_torch_device
+
+        cuda_device = device_cls("cuda")
+        result = _translate_device(cuda_device)
+
+        if torchada.is_musa_platform():
+            assert result.type == "musa"
+        else:
+            assert result.type == "cuda"
+
+    def test_translate_device_torch_device_cuda_with_index(self):
+        """Test torch.device('cuda', 0) translation."""
+        import torch
+
+        import torchada
+        from torchada._patch import _original_torch_device, _translate_device
+
+        if _original_torch_device is None:
+            device_cls = torch.device
+        else:
+            device_cls = _original_torch_device
+
+        cuda_device = device_cls("cuda", 0)
+        result = _translate_device(cuda_device)
+
+        if torchada.is_musa_platform():
+            assert result.type == "musa"
+            assert result.index == 0
+        else:
+            assert result.type == "cuda"
+            assert result.index == 0
+
+    def test_translate_device_torch_device_cpu_unchanged(self):
+        """Test torch.device('cpu') is unchanged."""
+        import torch
+
+        from torchada._patch import _translate_device
+
+        cpu_device = torch.device("cpu")
+        result = _translate_device(cpu_device)
+        assert result.type == "cpu"
+
+
+class TestDeviceIndexVariants:
+    """Test various cuda:N device index formats."""
+
+    def test_cuda_colon_zero(self):
+        """Test cuda:0 works."""
+        import torch
+
+        import torchada
+
+        if torch.cuda.is_available():
+            x = torch.randn(2, 2)
+            y = x.to("cuda:0")
+            assert y.device.type in ("cuda", "musa")
+            assert y.device.index == 0
+
+    def test_factory_with_cuda_index(self):
+        """Test torch.empty(device='cuda:0')."""
+        import torch
+
+        import torchada
+
+        if torch.cuda.is_available():
+            x = torch.empty(2, 2, device="cuda:0")
+            assert x.device.type in ("cuda", "musa")
+            assert x.device.index == 0
+
+    def test_torch_device_cuda_zero(self):
+        """Test torch.device('cuda:0')."""
+        import torch
+
+        import torchada
+
+        device = torch.device("cuda:0")
+        if torchada.is_musa_platform():
+            assert device.type == "musa"
+            assert device.index == 0
+        else:
+            assert device.type == "cuda"
+            assert device.index == 0
+
+    def test_torch_device_with_index_arg(self):
+        """Test torch.device('cuda', 0)."""
+        import torch
+
+        import torchada
+
+        device = torch.device("cuda", 0)
+        if torchada.is_musa_platform():
+            assert device.type == "musa"
+            assert device.index == 0
+        else:
+            assert device.type == "cuda"
+            assert device.index == 0
+
+
+class TestDeviceContextManager:
+    """Test device context manager (with torch.device(...):) works."""
+
+    def test_device_context_with_musa(self):
+        """Test that device context manager works with musa device."""
+        import torch
+
+        import torchada
+
+        if not torchada.is_musa_platform():
+            pytest.skip("MUSA platform required")
+
+        device = torch.device("musa:0")
+        with device:
+            t = torch.empty(10)
+            assert t.device.type == "musa"
+            assert t.device.index == 0
+
+    def test_device_context_with_cuda_translated(self):
+        """Test that device context manager works with cuda device (translated to musa)."""
+        import torch
+
+        import torchada
+
+        if not torchada.is_musa_platform():
+            pytest.skip("MUSA platform required")
+
+        # torch.device("cuda:0") gets translated to musa:0
+        device = torch.device("cuda:0")
+        assert device.type == "musa"  # Verify translation happened
+
+        with device:
+            t = torch.empty(10)
+            assert t.device.type == "musa"
+            assert t.device.index == 0
+
+    def test_original_functions_in_device_constructors(self):
+        """Test that original functions are added to _device_constructors."""
+        import torch
+
+        import torchada
+
+        if not torchada.is_musa_platform():
+            pytest.skip("MUSA platform required")
+
+        try:
+            from torch.utils._device import _device_constructors
+
+            constructors = _device_constructors()
+
+            # Check that original (unwrapped) functions are in constructors
+            if hasattr(torch.empty, "__wrapped__"):
+                assert torch.empty.__wrapped__ in constructors
+            if hasattr(torch.zeros, "__wrapped__"):
+                assert torch.zeros.__wrapped__ in constructors
+            if hasattr(torch.ones, "__wrapped__"):
+                assert torch.ones.__wrapped__ in constructors
+        except ImportError:
+            pytest.skip("torch.utils._device not available")

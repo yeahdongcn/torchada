@@ -681,11 +681,33 @@ def apply_patches():
     if hasattr(torch.nn.Module, "cuda"):
         torch.nn.Module.cuda = _wrap_module_cuda(torch.nn.Module.cuda)
 
-    # Patch tensor factory functions
+    # Patch tensor factory functions to translate device argument
+    # We also need to update _device_constructors cache to include
+    # the original (unwrapped) functions, because PyTorch's __torch_function__
+    # dispatch receives the original C function, not our Python wrapper.
+    original_fns = []
     for fn_name in _FACTORY_FUNCTIONS:
         if hasattr(torch, fn_name):
             original_fn = getattr(torch, fn_name)
+            original_fns.append(original_fn)
             setattr(torch, fn_name, _wrap_factory_function(original_fn))
+
+    # Update _device_constructors to include original functions
+    # This ensures the device context manager (with torch.device(...):) works
+    # because __torch_function__ receives the original C function
+    try:
+        from torch.utils._device import _device_constructors
+
+        # Get the current set of constructors
+        constructors = _device_constructors()
+
+        # Add original (unwrapped) functions to the constructors set
+        # PyTorch's __torch_function__ receives these, not our wrappers
+        for orig_fn in original_fns:
+            constructors.add(orig_fn)
+
+    except (ImportError, AttributeError):
+        pass  # Older PyTorch versions may not have this
 
     _patched = True
 
