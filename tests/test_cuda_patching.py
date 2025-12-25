@@ -846,3 +846,58 @@ class TestPatchDecorators:
 
         result = test_func_fails()
         assert result is None
+
+
+class TestIsCompiledAndBackends:
+    """Test _is_compiled and backends patches."""
+
+    def test_torch_musa_is_compiled(self):
+        """Test torch.musa._is_compiled() exists and returns True."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            assert hasattr(torch.musa, "_is_compiled")
+            assert torch.musa._is_compiled() is True
+
+    def test_torch_cuda_is_compiled_redirects(self):
+        """Test torch.cuda._is_compiled() works via redirect."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            # torch.cuda is redirected to torch.musa
+            result = torch.cuda._is_compiled()
+            assert result is True
+
+    def test_torch_backends_cuda_is_built(self):
+        """Test torch.backends.cuda.is_built() returns True on MUSA."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            # Should return True since MUSA is available
+            assert torch.backends.cuda.is_built() is True
+
+    def test_torch_backends_cuda_matmul_allow_tf32(self):
+        """Test torch.backends.cuda.matmul.allow_tf32 is accessible."""
+        import torch
+
+        import torchada
+
+        # Should be accessible and settable
+        original = torch.backends.cuda.matmul.allow_tf32
+        assert isinstance(original, bool)
+
+        # Test setting
+        torch.backends.cuda.matmul.allow_tf32 = True
+        assert torch.backends.cuda.matmul.allow_tf32 is True
+
+        torch.backends.cuda.matmul.allow_tf32 = False
+        assert torch.backends.cuda.matmul.allow_tf32 is False
+
+        # Restore original
+        torch.backends.cuda.matmul.allow_tf32 = original

@@ -118,3 +118,53 @@ def get_torch_device_module():
         return torch.cuda
     else:
         raise RuntimeError("No GPU platform available. Running on CPU only.")
+
+
+def is_gpu_device(device) -> bool:
+    """
+    Check if a device is a GPU device (either CUDA or MUSA).
+
+    This is a helper function for code that needs to check if a device
+    is a GPU device. On MUSA platform, device.type == "cuda" comparisons
+    fail because the device type is "musa", not "cuda".
+
+    Use this function instead of `device.type == "cuda"` for portable code.
+
+    Args:
+        device: A torch.device object, or an object with a .device attribute
+
+    Returns:
+        True if the device is cuda or musa, False otherwise
+
+    Example:
+        # Instead of:
+        #   if tensor.device.type == "cuda":
+        # Use:
+        #   if torchada.is_gpu_device(tensor.device):
+        #       ...
+    """
+    import torch
+
+    # Handle tensors, modules, etc. that have a .device attribute
+    if hasattr(device, "device"):
+        device = device.device
+
+    # Handle torch.device objects
+    if isinstance(device, torch.device):
+        return device.type in ("cuda", "musa")
+
+    # Handle string device specs
+    if isinstance(device, str):
+        return (
+            device == "cuda"
+            or device.startswith("cuda:")
+            or device == "musa"
+            or device.startswith("musa:")
+        )
+
+    return False
+
+
+def is_cuda_like_device(device) -> bool:
+    """Alias for is_gpu_device() for clarity."""
+    return is_gpu_device(device)

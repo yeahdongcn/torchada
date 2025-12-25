@@ -209,6 +209,8 @@ After `import torchada`, the following standard PyTorch APIs work on MUSA:
 | `get_backend()` | Get the underlying torch device module |
 | `is_patched()` | Check if patches have been applied |
 | `get_version()` | Get torchada version string |
+| `is_gpu_device(device)` | Check if device is CUDA or MUSA (see below) |
+| `is_cuda_like_device(device)` | Alias for `is_gpu_device()` |
 | `CUDA_HOME` | Path to CUDA/MUSA installation |
 
 ### torch.cuda (after importing torchada)
@@ -252,6 +254,34 @@ torchada automatically maps CUDA symbols to MUSA equivalents when building exten
 See `src/torchada/_mapping.py` for the complete mapping table (380+ mappings).
 
 **Note**: Many CUDA constructs like atomic operations (`atomicAdd`, `atomicCAS`), shuffle intrinsics (`__shfl_sync`), and half-precision math (`__float2half`) are identical in MUSA and don't require mapping.
+
+## Known Limitations
+
+### Device Type String Comparisons
+
+On MUSA platform, `torch.device("cuda")` is translated to a device with type `"musa"`, not `"cuda"`. This means direct string comparisons like `device.type == "cuda"` will fail.
+
+**Problem:**
+```python
+device = torch.device("cuda:0")  # On MUSA, this becomes musa:0
+if device.type == "cuda":  # Returns False on MUSA!
+    ...
+```
+
+**Solution:** Use `torchada.is_gpu_device()` for portable code:
+```python
+import torchada
+
+# Works on both CUDA and MUSA platforms
+if torchada.is_gpu_device(device):
+    ...
+
+# Also works with tensors
+if torchada.is_gpu_device(tensor):
+    ...
+```
+
+This is a fundamental limitation because `device.type` is a C-level property that cannot be patched from Python. Downstream projects that check `device.type == "cuda"` need to be patched to use `torchada.is_gpu_device()` or check for both types: `device.type in ("cuda", "musa")`.
 
 ## Architecture
 

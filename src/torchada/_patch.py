@@ -425,6 +425,12 @@ def _patch_torch_cuda_module():
         except ImportError:
             pass
 
+        # Add _is_compiled to torch_musa if not present
+        # This is needed for code that checks torch.cuda._is_compiled()
+        # (e.g., vLLM's CUDA kernel availability checks)
+        if not hasattr(torch.musa, "_is_compiled"):
+            torch.musa._is_compiled = lambda: True
+
 
 @patch_function
 @requires_import("torch.distributed")
@@ -590,6 +596,36 @@ def _patch_autocast():
             super().__init__(device_type, *args, **kwargs)
 
     torch.amp.autocast = PatchedAutocast
+
+
+@patch_function
+@requires_import("torch_musa")
+def _patch_backends_cuda():
+    """
+    Patch torch.backends.cuda to work on MUSA platform.
+
+    This patches:
+    - is_built() to return True when MUSA is available (since we're using
+      torch.cuda APIs that are redirected to MUSA)
+
+    Note: torch.backends.cuda.matmul properties (allow_tf32, etc.) work
+    as-is because they are settings that apply to the internal PyTorch
+    operations regardless of backend.
+    """
+    if not hasattr(torch, "backends") or not hasattr(torch.backends, "cuda"):
+        return
+
+    # Patch is_built() to return True when MUSA is available
+    # This allows code that checks torch.backends.cuda.is_built() to proceed
+    original_is_built = torch.backends.cuda.is_built
+
+    def patched_is_built():
+        # If MUSA is available, report as "built" since we redirect cuda->musa
+        if hasattr(torch, "musa") and torch.musa.is_available():
+            return True
+        return original_is_built()
+
+    torch.backends.cuda.is_built = patched_is_built
 
 
 @patch_function

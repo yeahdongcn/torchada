@@ -75,3 +75,41 @@ class TestPlatformDetection:
         assert backend is not None
         # Should have is_available method
         assert hasattr(backend, "is_available")
+
+    def test_is_gpu_device(self):
+        """Test is_gpu_device helper function."""
+        import torch
+
+        import torchada
+
+        # Test with torch.device objects
+        cpu_device = torch.device("cpu")
+        assert torchada.is_gpu_device(cpu_device) is False
+
+        # Test with string device specs
+        assert torchada.is_gpu_device("cpu") is False
+        assert torchada.is_gpu_device("cuda") is True
+        assert torchada.is_gpu_device("cuda:0") is True
+        assert torchada.is_gpu_device("musa") is True
+        assert torchada.is_gpu_device("musa:0") is True
+
+        # Test with tensor on CPU
+        cpu_tensor = torch.randn(10)
+        assert torchada.is_gpu_device(cpu_tensor) is False
+
+        # Test with GPU device if available
+        if torchada.is_musa_platform():
+            musa_device = torch.device("musa:0")
+            assert torchada.is_gpu_device(musa_device) is True
+
+            # torch.device("cuda") is translated to musa on MUSA platform
+            cuda_device = torch.device("cuda:0")
+            assert torchada.is_gpu_device(cuda_device) is True
+
+    def test_is_cuda_like_device_alias(self):
+        """Test is_cuda_like_device is alias for is_gpu_device."""
+        import torchada
+
+        # Should be the same function
+        assert torchada.is_cuda_like_device("cuda") == torchada.is_gpu_device("cuda")
+        assert torchada.is_cuda_like_device("cpu") == torchada.is_gpu_device("cpu")

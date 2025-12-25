@@ -33,7 +33,9 @@ from ._platform import (
     get_device_name,
     get_torch_device_module,
     is_cpu_platform,
+    is_cuda_like_device,
     is_cuda_platform,
+    is_gpu_device,
     is_musa_platform,
 )
 from .utils.cpp_extension import CUDA_HOME
@@ -78,6 +80,9 @@ __all__ = [
     "get_device_name",
     "get_platform",
     "get_backend",
+    # Device helpers
+    "is_gpu_device",
+    "is_cuda_like_device",
     # Patching
     "apply_patches",
     "is_patched",
