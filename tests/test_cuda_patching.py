@@ -901,3 +901,25 @@ class TestIsCompiledAndBackends:
 
         # Restore original
         torch.backends.cuda.matmul.allow_tf32 = original
+
+    def test_torch_backends_cuda_matmul_fp32_precision(self):
+        """Test torch.backends.cuda.matmul.fp32_precision is accessible."""
+        import torch
+
+        import torchada  # noqa: F401 - ensure patches are applied
+
+        # Should be accessible
+        original = torch.backends.cuda.matmul.fp32_precision
+        assert original in ("highest", "high", "medium")
+
+        # Test setting (use torch.get/set_float32_matmul_precision values)
+        torch.backends.cuda.matmul.fp32_precision = "highest"
+        assert torch.backends.cuda.matmul.fp32_precision == "highest"
+        assert torch.get_float32_matmul_precision() == "highest"
+
+        torch.backends.cuda.matmul.fp32_precision = "high"
+        assert torch.backends.cuda.matmul.fp32_precision == "high"
+        assert torch.get_float32_matmul_precision() == "high"
+
+        # Restore original
+        torch.backends.cuda.matmul.fp32_precision = original
