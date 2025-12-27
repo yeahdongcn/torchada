@@ -261,6 +261,46 @@ def _patch_torch_device():
     torch.device = DeviceFactoryWrapper
 
 
+# Store original torch.Generator for patching
+_original_torch_generator = None
+
+
+@patch_function
+def _patch_torch_generator():
+    """
+    Patch torch.Generator to translate 'cuda' device to 'musa' on MUSA platform.
+
+    This ensures that torch.Generator(device="cuda") creates a MUSA generator
+    instead of failing with "Cannot get CUDA generator without ATen_cuda library".
+    """
+    global _original_torch_generator
+
+    if _original_torch_generator is not None:
+        return  # Already patched
+
+    _original_torch_generator = torch.Generator
+
+    class GeneratorWrapper:
+        """Wrapper for torch.Generator that translates cuda -> musa."""
+
+        def __new__(cls, device=None):
+            # Translate device if needed
+            if device is not None:
+                device = _translate_device(device)
+            return _original_torch_generator(device=device)
+
+        # Ensure isinstance checks work
+        @classmethod
+        def __instancecheck__(cls, instance):
+            return isinstance(instance, _original_torch_generator)
+
+    # Copy over class attributes
+    GeneratorWrapper.__doc__ = _original_torch_generator.__doc__
+    GeneratorWrapper.__module__ = _original_torch_generator.__module__
+
+    torch.Generator = GeneratorWrapper
+
+
 def _wrap_factory_function(original_fn: Callable) -> Callable:
     """Wrap tensor factory functions (empty, zeros, ones, etc.) to translate device."""
 

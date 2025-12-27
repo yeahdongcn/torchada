@@ -625,6 +625,65 @@ class TestDeviceFunctions:
         assert hasattr(torch.cuda, "is_initialized")
 
 
+class TestTorchGenerator:
+    """Test torch.Generator works with cuda device on MUSA platform."""
+
+    def test_generator_cuda_device(self):
+        """Test torch.Generator(device='cuda') works on MUSA."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            # Should create a MUSA generator instead of failing
+            gen = torch.Generator(device="cuda")
+            assert gen is not None
+            assert gen.device.type == "musa"
+
+    def test_generator_cuda_device_index(self):
+        """Test torch.Generator(device='cuda:0') works on MUSA."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            gen = torch.Generator(device="cuda:0")
+            assert gen is not None
+            assert gen.device.type == "musa"
+            assert gen.device.index == 0
+
+    def test_generator_musa_device(self):
+        """Test torch.Generator(device='musa') still works."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            gen = torch.Generator(device="musa")
+            assert gen is not None
+            assert gen.device.type == "musa"
+
+    def test_generator_no_device(self):
+        """Test torch.Generator() without device works."""
+        import torch
+
+        import torchada  # noqa: F401
+
+        gen = torch.Generator()
+        assert gen is not None
+
+    def test_generator_manual_seed_chain(self):
+        """Test torch.Generator(device='cuda').manual_seed(seed) works."""
+        import torch
+
+        import torchada
+
+        if torchada.is_musa_platform():
+            gen = torch.Generator(device="cuda").manual_seed(42)
+            assert gen is not None
+            assert gen.device.type == "musa"
+
+
 class TestTorchVersionCuda:
     """Test torch.version.cuda is NOT patched.
 
